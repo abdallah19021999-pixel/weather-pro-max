@@ -5,111 +5,134 @@ from streamlit_lottie import st_lottie
 from deep_translator import GoogleTranslator
 
 # 1. إعدادات الصفحة
-st.set_page_config(page_title="Weather Pro Max", page_icon="🌤️", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Weather Pro Max", page_icon="🌤️", layout="wide")
 
-# استدعاء الأسرار
+# استدعاء الأسرار (Secrets)
 API_KEY = st.secrets["OPENWEATHER_API_KEY"]
 TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
 
-# 2. دالة إرسال إشعار لتيليجرام
+# 2. الدوال الأساسية
 def notify_me(msg):
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": msg}, timeout=5)
     except: pass
 
-# 3. جلب بيانات الطقس
 @st.cache_data(ttl=600)
 def get_weather_data(city_name):
     try:
         translated = GoogleTranslator(source='auto', target='en').translate(city_name)
         url = f"http://api.openweathermap.org/data/2.5/weather?q={translated}&appid={API_KEY}&units=metric"
         r = requests.get(url, timeout=10)
-        if r.status_code == 200:
-            data = r.json()
-            notify_me(f"🔔 بحث جديد عن: {city_name}\n🌡️ {data['main']['temp']}°C")
-            return data
-        return None
+        return r.json() if r.status_code == 200 else None
     except: return None
 
 def load_lottieurl(url: str):
     try: return requests.get(url).json()
     except: return None
 
-# --- تطبيق الـ CSS (شريط الإعلانات + التنسيق) ---
-st.markdown("""
+# --- تصميم CSS احترافي (Modern Glassmorphism) ---
+st.markdown(f"""
     <style>
-    [data-testid="stSidebar"] { display: none; }
-    .stApp { background: linear-gradient(to bottom, #1e3c72, #2a5298); color: white; }
+    [data-testid="stSidebar"] {{ display: none; }}
+    .stApp {{
+        background: url("https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80");
+        background-size: cover;
+    }}
     
-    /* شريط الإعلانات المتحرك */
-    .ticker-wrapper {
-        width: 100%; overflow: hidden; background: rgba(0,0,0,0.3);
-        padding: 10px 0; border-bottom: 2px solid #007bff; margin-bottom: 20px;
-    }
-    .ticker-text {
-        display: inline-block; white-space: nowrap;
-        animation: ticker 20s linear infinite; font-weight: bold; font-size: 1.1rem;
-    }
-    @keyframes ticker {
-        0% { transform: translateX(100%); }
-        100% { transform: translateX(-100%); }
-    }
+    /* شريط الإعلانات العلوي */
+    .ticker-container {{
+        background: rgba(0, 0, 0, 0.6);
+        color: #00d4ff;
+        padding: 8px;
+        font-weight: bold;
+        text-align: center;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(255,255,255,0.1);
+    }}
+
+    /* تصميم البطاقات (Cards) */
+    .metric-card {{
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        padding: 20px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        text-align: center;
+        transition: 0.3s;
+    }}
+    .metric-card:hover {{
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.2);
+    }}
+
+    /* تحسين بوكس البحث */
+    .stTextInput input {{
+        background: rgba(255, 255, 255, 0.9) !important;
+        color: #1e3c72 !important;
+        border-radius: 30px !important;
+        font-size: 1.2rem !important;
+        border: none !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+    }}
     
-    /* تنسيق صندوق البحث */
-    div[data-testid="stVerticalBlock"] > div:has(input) {
-        max-width: 450px; margin: 0 auto !important;
-        background: white !important; padding: 5px !important; border-radius: 25px !important;
-    }
-    input { color: black !important; text-align: center !important; font-size: 1.2rem !important; }
-    
-    /* تنسيق الزرار */
-    div.stButton > button {
-        background: #007bff; color: white; border-radius: 20px; 
-        width: 250px; margin: 20px auto; display: block; height: 3.5em; font-weight: bold;
-    }
+    h1 {{ text-shadow: 2px 2px 10px rgba(0,0,0,0.5); }}
     </style>
-    
-    <div class="ticker-wrapper">
-        <div class="ticker-text">
-            🚀 Weather Pro Max 2026: استمتع بأدق بيانات الطقس عالمياً | تم التطوير بواسطة عبد الله نبيل | تابع آخر التحديثات عبر البوت الخاص بنا 🌤️
-        </div>
-    </div>
     """, unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align: center;'>🌤️ Weather Pro Max</h1>", unsafe_allow_html=True)
+# شريط الإعلانات
+st.markdown('<div class="ticker-container">🚀 تحديثات 2026: تم تفعيل ميزة ذكاء خرائط الطقس وفرص الأمطار المباشرة</div>', unsafe_allow_html=True)
 
-c1, c2, c3 = st.columns([1, 2, 1])
+st.markdown("<h1 style='text-align: center; color: white;'>🌤️ Weather Pro Max</h1>", unsafe_allow_html=True)
+
+# منطقة البحث
+c1, c2, c3 = st.columns([1, 1.5, 1])
 with c2:
-    city = st.text_input("", value="Alexandria")
+    city = st.text_input("", value="Alexandria", placeholder="Search city...")
 
 weather_data = get_weather_data(city)
 
 if weather_data:
-    # الأنميشن
-    main_cond = weather_data['weather'][0]['main'].lower()
-    lottie_json = load_lottieurl("https://lottie.host/a06d87f7-f823-4556-9a5d-b4b609c2a265/gQz099j54N.json")
-    if lottie_json: st_lottie(lottie_json, height=220)
+    # إشعار تيليجرام
+    notify_me(f"👤 مستخدم بحث عن: {city} | {weather_data['main']['temp']}°C")
 
-    if st.button("Get Detailed Report"):
-        st.markdown("---")
-        # إضافة فرصة الأمطار (OpenWeather يوفرها أحياناً في خانة 'rain' أو 'clouds')
-        rain_chance = weather_data.get('rain', {}).get('1h', 0) 
-        clouds = weather_data['clouds']['all']
-        
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Temp", f"{weather_data['main']['temp']} °C")
-        col2.metric("Wind", f"{weather_data['wind']['speed']} m/s")
-        col3.metric("Humidity", f"{weather_data['main']['humidity']}%")
-        col4.metric("Rain/Clouds", f"{rain_chance if rain_chance > 0 else clouds}%")
-        
-        st.markdown("---")
-        l, r = st.columns([2, 1])
-        with l:
-            st.map(pd.DataFrame({'lat': [weather_data['coord']['lat']], 'lon': [weather_data['coord']['lon']]}))
-        with r:
-            icon = weather_data['weather'][0]['icon']
-            st.image(f"http://openweathermap.org/img/wn/{icon}@4x.png", caption=weather_data['weather'][0]['description'])
+    # عرض الأنميشن والبيانات الأساسية في صف واحد
+    col_main1, col_main2 = st.columns([1, 1])
+    with col_main1:
+        lottie_json = load_lottieurl("https://lottie.host/a06d87f7-f823-4556-9a5d-b4b609c2a265/gQz099j54N.json")
+        if lottie_json: st_lottie(lottie_json, height=250)
+    
+    with col_main2:
+        st.markdown(f"""
+            <div style='text-align: center; margin-top: 50px;'>
+                <h2 style='font-size: 4rem; color: white; margin: 0;'>{int(weather_data['main']['temp'])}°C</h2>
+                <p style='font-size: 1.5rem; color: #ddd;'>{weather_data['weather'][0]['description'].capitalize()}</p>
+            </div>
+        """, unsafe_allow_html=True)
 
-st.markdown("<br><center>Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
+    # صف البطاقات الاحترافي
+    st.markdown("### 📊 Live Statistics")
+    m1, m2, m3, m4 = st.columns(4)
+    
+    # نسبة الأمطار (تعتمد على السحب والرطوبة كمعادلة تقريبية لو لم تتوفر مباشرة)
+    rain_prob = weather_data.get('rain', {}).get('1h', weather_data['clouds']['all'] / 10)
+    
+    with m1:
+        st.markdown(f'<div class="metric-card">💧<br><small>Humidity</small><br><h3>{weather_data["main"]["humidity"]}%</h3></div>', unsafe_allow_html=True)
+    with m2:
+        st.markdown(f'<div class="metric-card">🌬️<br><small>Wind Speed</small><br><h3>{weather_data["wind"]["speed"]} m/s</h3></div>', unsafe_allow_html=True)
+    with m3:
+        st.markdown(f'<div class="metric-card">🌧️<br><small>Rain Chance</small><br><h3>{int(rain_prob * 10)}%</h3></div>', unsafe_allow_html=True)
+    with m4:
+        st.markdown(f'<div class="metric-card">🎈<br><small>Pressure</small><br><h3>{weather_data["main"]["pressure"]} hPa</h3></div>', unsafe_allow_html=True)
+
+    # الخريطة في كارد كبير
+    st.markdown("<br>", unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="metric-card">📍 <b>Live Location Tracking</b>', unsafe_allow_html=True)
+        st.map(pd.DataFrame({'lat': [weather_data['coord']['lat']], 'lon': [weather_data['coord']['lon']]}))
+        st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("<br><center style='color: white; opacity: 0.6;'>Design & Dev by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
