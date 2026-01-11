@@ -2,109 +2,91 @@ import streamlit as st
 import requests
 import pandas as pd
 from streamlit_lottie import st_lottie
+from deep_translator import GoogleTranslator
 
 # 1. إعدادات الصفحة
 st.set_page_config(page_title="Weather Pro Max", page_icon="🌤️", layout="wide")
 
-# 2. الأمان: جلب المفاتيح من Secrets
-# ملاحظة: يجب إضافة API_KEY و TELEGRAM_TOKEN و TELEGRAM_CHAT_ID في إعدادات Streamlit Cloud
-try:
-    API_KEY = st.secrets["API_KEY"]
-    TG_TOKEN = st.secrets["TELEGRAM_TOKEN"]
-    TG_CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
-except:
-    API_KEY = "e86f7174a5a78c6cde9aec1d0cf46126"
-    TG_TOKEN = None
-    TG_CHAT_ID = None
+# --- استدعاء الأسرار من الخزنة (Secrets) ---
+# دي الطريقة الصح عشان محدش يسرق التوكن بتاعك من GitHub
+API_KEY = st.secrets["OPENWEATHER_API_KEY"]
+TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
+TELEGRAM_CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
 
-# دالة إرسال تنبيه تليجرام
-def send_telegram_alert(city, rain_chance):
-    if TG_TOKEN and TG_CHAT_ID:
-        msg = f"⚠️ تنبيه مطر من Weather Pro Max!\n\nمدينة {city} احتمال المطر فيها وصل لـ {int(rain_chance)}% 🌧️. لا تنسَ المظلة!"
-        url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage?chat_id={TG_CHAT_ID}&text={msg}"
-        try:
-            requests.get(url)
-        except:
-            pass
-
-# دالة جلب البيانات
-@st.cache_data(ttl=600)
-def get_weather(city):
+# 2. دالة إرسال إشعار للبوت بتاعك (تيليجرام)
+def notify_me(msg):
     try:
-        curr_url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric"
-        fore_url = f"http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={API_KEY}&units=metric"
-        curr_r = requests.get(curr_url).json()
-        fore_r = requests.get(fore_url).json()
-        return curr_r, fore_r
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": msg})
     except:
-        return None, None
+        pass
 
-# 3. واجهة المستخدم والـ CSS
+# 3. دالة جلب البيانات
+@st.cache_data(ttl=600)
+def get_weather_data(city_name):
+    try:
+        translated = GoogleTranslator(source='auto', target='en').translate(city_name)
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={translated}&appid={API_KEY}&units=metric"
+        r = requests.get(url)
+        if r.status_code == 200:
+            data = r.json()
+            # هيبعتلك رسالة للبوت أول ما حد يبحث عن مدينة
+            notify_me(f"🔔 مستخدم بحث عن: {city_name}\n🌡️ الحرارة: {data['main']['temp']}°C")
+            return data
+        return None
+    except:
+        return None
+
+def load_lottieurl(url: str):
+    try: return requests.get(url).json()
+    except: return None
+
+# --- التصميم ---
 st.markdown(f"""
     <style>
-    .stApp {{ background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; }}
-    .metric-box {{
-        background: rgba(255, 255, 255, 0.1);
-        padding: 20px;
-        border-radius: 20px;
-        text-align: center;
-        border: 1px solid rgba(255,255,255,0.15);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
-    }}
-    .ad-banner {{
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        backdrop-filter: blur(10px);
-        color: white;
-        text-align: center;
-        padding: 12px;
-        z-index: 999;
-        font-size: 15px;
-        border-top: 1px solid #00d2ff;
-    }}
-    input {{ color: black !important; font-weight: bold !important; border-radius: 10px !important; }}
+    [data-testid="stSidebar"] {{ display: none; }}
+    .stApp {{ background: linear-gradient(to bottom, #1e3c72, #2a5298); color: white; }}
+    .stTextInput input {{ color: black !important; font-weight: bold; border-radius: 15px !important; text-align: center; }}
+    div.stButton > button {{ background: #007bff; color: white; border-radius: 15px; width: 100%; font-weight: bold; }}
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🌤️ Weather Pro Max Dashboard")
-city = st.text_input("Enter City Name:", "Alexandria")
 
-curr, fore = get_weather(city)
+# البحث (محدد العرض للموبايل والسنتر)
+c1, c2, c3 = st.columns([1, 2, 1])
+with c2:
+    city = st.text_input("Enter City Name:", "Alexandria")
 
-if curr and "main" in curr:
-    # حساب نسبة الأمطار
-    rain_chance = fore['list'][0].get('pop', 0) * 100 if fore else 0
-    
-    # نظام التنبيهات
-    if rain_chance > 50:
-        send_telegram_alert(city, rain_chance)
-        st.warning(f"🚨 تم إرسال تنبيه مطر ({int(rain_chance)}%) إلى تليجرام الخاص بك!")
+weather_data = get_weather_data(city)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.markdown(f"<div class='metric-box'><h4>Temp</h4><h2>{curr['main']['temp']}°C</h2></div>", unsafe_allow_html=True)
-    with c2:
-        st.markdown(f"<div class='metric-box'><h4>Wind</h4><h2>{curr['wind']['speed']} m/s</h2></div>", unsafe_allow_html=True)
-    with c3:
-        st.markdown(f"<div class='metric-box'><h4>Humidity</h4><h2>{curr['main']['humidity']}%</h2></div>", unsafe_allow_html=True)
-    with c4:
-        st.markdown(f"<div class='metric-box'><h4>Rain Chance</h4><h2>{int(rain_chance)}%</h2></div>", unsafe_allow_html=True)
+# الأنميشن
+LOTTIE_URLS = {
+    "rain": "https://lottie.host/9331e84a-c0b9-4f7d-815d-ed0f48866380/vGvFjPqXWp.json",
+    "clear": "https://lottie.host/a8a5b293-61a7-47b8-80f2-b892a4066c0d/Y08T7N1p5N.json",
+    "clouds": "https://lottie.host/17e23118-2e0f-48e0-a435-081831412d2b/qQ0JmX24jC.json",
+    "default": "https://lottie.host/a06d87f7-f823-4556-9a5d-b4b609c2a265/gQz099j54N.json"
+}
 
-    st.markdown("---")
-    
-    # عرض الخريطة
-    st.map(pd.DataFrame({'lat': [curr['coord']['lat']], 'lon': [curr['coord']['lon']]}))
+if weather_data:
+    main_cond = weather_data['weather'][0]['main'].lower()
+    anim_url = LOTTIE_URLS.get(main_cond if main_cond in LOTTIE_URLS else "default")
+    st_lottie(load_lottieurl(anim_url), height=250)
 
-# 4. قسم الإعلانات (الربح)
-st.markdown("""
-    <div class="ad-banner">
-        ☔ هل تتوقع أمطاراً؟ اشتري أفضل مظلة ذكية الآن بخصم 30%! 
-        <a href="https://www.amazon.com" target="_blank" style="color: #00d2ff; text-decoration: none; font-weight: bold;"> اطلبها الآن 🛒</a>
-    </div>
-    """, unsafe_allow_html=True)
+    if st.button("Get Detailed Report"):
+        st.markdown("---")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Temp", f"{weather_data['main']['temp']} °C")
+        col2.metric("Wind", f"{weather_data['wind']['speed']} m/s")
+        col3.metric("Humidity", f"{weather_data['main']['humidity']}%")
+        
+        st.markdown("---")
+        l, r = st.columns([2, 1])
+        with l:
+            st.map(pd.DataFrame({'lat': [weather_data['coord']['lat']], 'lon': [weather_data['coord']['lon']]}))
+        with r:
+            icon = weather_data['weather'][0]['icon']
+            st.image(f"http://openweathermap.org/img/wn/{icon}@4x.png")
+            st.write(f"Description: {weather_data['weather'][0]['description']}")
 
-st.markdown("<br><br><br><center>Created by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
+st.markdown("<br><center>Created by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
