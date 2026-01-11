@@ -12,8 +12,9 @@ API_KEY = st.secrets["OPENWEATHER_API_KEY"]
 TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
 
-# --- رابط الأفلييت الخاص بك (تقدر تغيره برابطك الحقيقي) ---
-AMAZON_AFFILIATE_URL = "https://www.amazon.com/?tag=abdallahnabil-20" # غير 'abdallahnabil-20' بكودك
+# --- رابط الأفلييت الخاص بك بعد ما فعلت الحساب ---
+# تم تحديث الكود بـ Store ID الخاص بك: abdallah2026-21
+AMAZON_BASE_URL = "https://www.amazon.eg/?&tag=abdallah2026-21" 
 
 def notify_me(msg):
     try:
@@ -34,38 +35,19 @@ def load_lottieurl(url: str):
     try: return requests.get(url).json()
     except: return None
 
-# --- الـ CSS للتنسيق المنظم والموبايل ---
+# --- الـ CSS للتنسيق ---
 st.markdown(f"""
     <style>
     [data-testid="stSidebar"] {{ display: none; }}
     .stApp {{ background: linear-gradient(to bottom, #1e3c72, #2a5298); color: white; }}
-    
-    /* تنسيق إعلان أمازون الربحي */
     .amazon-ad-box {{
-        background: #ffffff;
-        color: #232f3e;
-        padding: 20px;
-        border-radius: 15px;
-        text-align: center;
-        margin-top: 30px;
-        border-bottom: 5px solid #ff9900;
+        background: #ffffff; color: #232f3e; padding: 20px; border-radius: 15px;
+        text-align: center; margin-top: 30px; border-bottom: 5px solid #ff9900;
         box-shadow: 0 10px 20px rgba(0,0,0,0.3);
     }}
     .ad-button {{
-        background-color: #ff9900;
-        color: white !important;
-        padding: 10px 25px;
-        text-decoration: none;
-        border-radius: 25px;
-        font-weight: bold;
-        display: inline-block;
-        margin-top: 10px;
-    }}
-    
-    [data-testid="stMetric"] {{
-        background: rgba(255,255,255,0.1);
-        padding: 15px !important;
-        border-radius: 15px;
+        background-color: #ff9900; color: white !important; padding: 10px 25px;
+        text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block; margin-top: 10px;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -79,54 +61,44 @@ if weather_data:
     main_cond = weather_data['weather'][0]['main'].lower()
     temp = weather_data['main']['temp']
     
-    # --- منطق الربح الذكي (تحديد المنتج حسب الجو) ---
-    product_name = ""
-    ad_text = ""
-    
+    # تحديد المنتج حسب الجو
     if "rain" in main_cond:
-        product_name = "Umbrellas & Raincoats"
-        ad_text = "☔ الجو مطر؟ الحق خصومات الشماسي والجاكيتات الووتر بروف!"
+        ad_text = "☔ الدنيا بتمطر؟ الحق عروض الشماسي والملابس المضادة للمطر!"
+        product_link = "https://www.amazon.eg/s?k=umbrella&tag=abdallah2026-21"
     elif temp > 25:
-        product_name = "Sunglasses & Sunscreen"
-        ad_text = "🕶️ الجو شمس؟ شوف أحدث نظارات ريبان وعروض الصيف!"
+        ad_text = "🕶️ الجو شمس؟ احمي عينك بأفضل نظارات الشمس من أمازون!"
+        product_link = "https://www.amazon.eg/s?k=sunglasses&tag=abdallah2026-21"
     elif temp < 15:
-        product_name = "Winter Jackets & Heaters"
-        ad_text = "🧥 الجو برد؟ دفي نفسك مع كولكشن الشتاء الجديد!"
+        ad_text = "🧥 الجو برد؟ شوف جواكت الشتاء الجديدة والدفايات!"
+        product_link = "https://www.amazon.eg/s?k=winter+jackets&tag=abdallah2026-21"
     else:
-        product_name = "Backpacks & Travel Gear"
-        ad_text = "🎒 الجو مناسب للخروج! شوف شنط الرحلات المميزة!"
+        ad_text = "🎒 الجو مناسب للخروج! شوف أحدث عروض شنط الظهر والرحلات!"
+        product_link = "https://www.amazon.eg/s?k=backpacks&tag=abdallah2026-21"
 
-    # 1. عرض الأنميشن
-    anim_urls = {
-        "rain": "https://lottie.host/9331e84a-c0b9-4f7d-815d-ed0f48866380/vGvFjPqXWp.json",
-        "clear": "https://lottie.host/a8a5b293-61a7-47b8-80f2-b892a4066c0d/Y08T7N1p5N.json",
-        "clouds": "https://lottie.host/17e23118-2e0f-48e0-a435-081831412d2b/qQ0JmX24jC.json",
-        "default": "https://lottie.host/a06d87f7-f823-4556-9a5d-b4b609c2a265/gQz099j54N.json"
-    }
+    # الأنميشن
+    anim_urls = {"rain": "https://lottie.host/9331e84a-c0b9-4f7d-815d-ed0f48866380/vGvFjPqXWp.json",
+                 "clear": "https://lottie.host/a8a5b293-61a7-47b8-80f2-b892a4066c0d/Y08T7N1p5N.json",
+                 "clouds": "https://lottie.host/17e23118-2e0f-48e0-a435-081831412d2b/qQ0JmX24jC.json",
+                 "default": "https://lottie.host/a06d87f7-f823-4556-9a5d-b4b609c2a265/gQz099j54N.json"}
+    
     anim_json = load_lottieurl(anim_urls.get(main_cond if main_cond in anim_urls else "default"))
     if anim_json: st_lottie(anim_json, height=250)
 
-    # 2. عرض البيانات المنظمة للموبايل
+    # زر التحليل
     if st.button("Show Weather Analysis"):
-        notify_me(f"💰 مستخدم مهتم بـ {city} | الجو {main_cond}")
+        notify_me(f"💰 كليك على إعلان أمازون! بحث عن {city}")
         st.markdown("---")
         c1, c2 = st.columns(2)
         c1.metric("Temp", f"{temp} °C")
         c2.metric("Clouds", f"{weather_data['clouds']['all']}%")
-        
-        c3, c4 = st.columns(2)
-        c3.metric("Wind", f"{weather_data['wind']['speed']} m/s")
-        c4.metric("Humidity", f"{weather_data['main']['humidity']}%")
-        
         st.map(pd.DataFrame({'lat': [weather_data['coord']['lat']], 'lon': [weather_data['coord']['lon']]}))
 
-    # --- 3. شريط إعلانات أمازون الربحي (في الأسفل) ---
+    # شريط إعلان أمازون الربحي
     st.markdown(f"""
         <div class="amazon-ad-box">
             <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="100"><br>
             <p style="color: #232f3e; margin: 10px 0;">{ad_text}</p>
-            <a href="{AMAZON_AFFILIATE_URL}" class="ad-button">تسوق الآن من أمازون 🛒</a>
-            <p style="font-size: 0.7rem; margin-top: 10px; color: #666;">* عمولة خاصة لمستخدمي Weather Pro Max</p>
+            <a href="{product_link}" target="_blank" class="ad-button">تسوق الآن بخصم خاص 🛒</a>
         </div>
     """, unsafe_allow_html=True)
 
