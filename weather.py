@@ -4,15 +4,12 @@ import pandas as pd
 from streamlit_lottie import st_lottie
 from deep_translator import GoogleTranslator
 
-# 1. إعدادات الصفحة
 st.set_page_config(page_title="Weather Pro Max", page_icon="🌤️", layout="wide", initial_sidebar_state="collapsed")
 
-# استدعاء الأسرار (التوكنات)
 API_KEY = st.secrets["OPENWEATHER_API_KEY"]
 TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
 
-# --- رابط الأفلييت الخاص بك (تقدر تغيره برابطك الحقيقي) ---
 AMAZON_AFFILIATE_URL = "https://www.amazon.com/?tag=abdallahnabil-20" # غير 'abdallahnabil-20' بكودك
 
 def notify_me(msg):
@@ -34,13 +31,11 @@ def load_lottieurl(url: str):
     try: return requests.get(url).json()
     except: return None
 
-# --- الـ CSS للتنسيق المنظم والموبايل ---
 st.markdown(f"""
     <style>
     [data-testid="stSidebar"] {{ display: none; }}
     .stApp {{ background: linear-gradient(to bottom, #1e3c72, #2a5298); color: white; }}
     
-    /* تنسيق إعلان أمازون الربحي */
     .amazon-ad-box {{
         background: #ffffff;
         color: #232f3e;
@@ -79,7 +74,6 @@ if weather_data:
     main_cond = weather_data['weather'][0]['main'].lower()
     temp = weather_data['main']['temp']
     
-    # --- منطق الربح الذكي (تحديد المنتج حسب الجو) ---
     product_name = ""
     ad_text = ""
     
@@ -96,7 +90,6 @@ if weather_data:
         product_name = "Backpacks & Travel Gear"
         ad_text = "🎒 الجو مناسب للخروج! شوف شنط الرحلات المميزة!"
 
-    # 1. عرض الأنميشن
     anim_urls = {
         "rain": "https://lottie.host/9331e84a-c0b9-4f7d-815d-ed0f48866380/vGvFjPqXWp.json",
         "clear": "https://lottie.host/a8a5b293-61a7-47b8-80f2-b892a4066c0d/Y08T7N1p5N.json",
@@ -106,7 +99,7 @@ if weather_data:
     anim_json = load_lottieurl(anim_urls.get(main_cond if main_cond in anim_urls else "default"))
     if anim_json: st_lottie(anim_json, height=250)
 
-    # 2. عرض البيانات المنظمة للموبايل
+منظمة للموبايل
     if st.button("Show Weather Analysis"):
         notify_me(f"💰 مستخدم مهتم بـ {city} | الجو {main_cond}")
         st.markdown("---")
@@ -120,14 +113,15 @@ if weather_data:
         
         st.map(pd.DataFrame({'lat': [weather_data['coord']['lat']], 'lon': [weather_data['coord']['lon']]}))
 
-    # --- 3. شريط إعلانات أمازون الربحي (في الأسفل) ---
+   
     st.markdown(f"""
         <div class="amazon-ad-box">
             <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="100"><br>
             <p style="color: #232f3e; margin: 10px 0;">{ad_text}</p>
             <a href="{AMAZON_AFFILIATE_URL}" class="ad-button">تسوق الآن من أمازون 🛒</a>
-            <p style="font-size: 0.7rem; margin-top: 10px; color: #666;">* عمولة خاصة لمستخدمي Weather Pro Max</p>
+            <p style="font-size: 0.7rem; margin-top: 10px; color: #666;">* Weather Pro Max</p>
         </div>
     """, unsafe_allow_html=True)
 
 st.markdown("<br><center>Created by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
+
