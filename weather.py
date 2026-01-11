@@ -7,12 +7,14 @@ from deep_translator import GoogleTranslator
 # 1. إعدادات الصفحة
 st.set_page_config(page_title="Weather Pro Max", page_icon="🌤️", layout="wide", initial_sidebar_state="collapsed")
 
-# استدعاء الأسرار
+# استدعاء الأسرار (التوكنات)
 API_KEY = st.secrets["OPENWEATHER_API_KEY"]
 TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
 
-# دالة إرسال إشعار لتيليجرام
+# --- رابط الأفلييت الخاص بك (تقدر تغيره برابطك الحقيقي) ---
+AMAZON_AFFILIATE_URL = "https://www.amazon.com/?tag=abdallahnabil-20" # غير 'abdallahnabil-20' بكودك
+
 def notify_me(msg):
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -32,35 +34,38 @@ def load_lottieurl(url: str):
     try: return requests.get(url).json()
     except: return None
 
-# --- تطبيق الـ CSS ---
+# --- الـ CSS للتنسيق المنظم والموبايل ---
 st.markdown(f"""
     <style>
     [data-testid="stSidebar"] {{ display: none; }}
     .stApp {{ background: linear-gradient(to bottom, #1e3c72, #2a5298); color: white; }}
     
-    .stTextInput > div > div > input {{
-        border-radius: 15px !important;
-        text-align: center !important;
-    }}
-
-    /* تصميم شريط إعلانات أمازون الذكي (ليظهر بالأسفل) */
-    .amazon-ads {{
-        background: white;
+    /* تنسيق إعلان أمازون الربحي */
+    .amazon-ad-box {{
+        background: #ffffff;
         color: #232f3e;
-        padding: 15px;
-        border-radius: 12px;
+        padding: 20px;
+        border-radius: 15px;
         text-align: center;
-        margin: 25px 0;
-        border-left: 5px solid #ff9900;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        font-family: sans-serif;
+        margin-top: 30px;
+        border-bottom: 5px solid #ff9900;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.3);
     }}
-    .amazon-ads b {{ color: #ff9900; }}
+    .ad-button {{
+        background-color: #ff9900;
+        color: white !important;
+        padding: 10px 25px;
+        text-decoration: none;
+        border-radius: 25px;
+        font-weight: bold;
+        display: inline-block;
+        margin-top: 10px;
+    }}
     
     [data-testid="stMetric"] {{
         background: rgba(255,255,255,0.1);
         padding: 15px !important;
-        border-radius: 10px;
+        border-radius: 15px;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -74,51 +79,55 @@ if weather_data:
     main_cond = weather_data['weather'][0]['main'].lower()
     temp = weather_data['main']['temp']
     
-    # تحضير محتوى الإعلان (سيتم عرضه بالأسفل)
-    ad_content = ""
+    # --- منطق الربح الذكي (تحديد المنتج حسب الجو) ---
+    product_name = ""
+    ad_text = ""
+    
     if "rain" in main_cond:
-        ad_content = "☔ الدنيا بتمطر؟ الحق عرض الشماسي والجاكيتات الووتر بروف على أمازون! <b>خصم 20%</b>"
+        product_name = "Umbrellas & Raincoats"
+        ad_text = "☔ الجو مطر؟ الحق خصومات الشماسي والجاكيتات الووتر بروف!"
     elif temp > 25:
-        ad_content = "🕶️ الجو شمس؟ جرب نظارات Ray-Ban الأصلية، شياكة وحماية! <b>اطلبها الآن</b>"
+        product_name = "Sunglasses & Sunscreen"
+        ad_text = "🕶️ الجو شمس؟ شوف أحدث نظارات ريبان وعروض الصيف!"
     elif temp < 15:
-        ad_content = "🧥 الجو برد؟ شوف كولكشن الشتاء الجديد والدفايات على أمازون! <b>بأفضل سعر</b>"
+        product_name = "Winter Jackets & Heaters"
+        ad_text = "🧥 الجو برد؟ دفي نفسك مع كولكشن الشتاء الجديد!"
     else:
-        ad_content = "🎒 طالع رحلة؟ شنط الظهر والرحلات المثالية مستنياك على أمازون!"
+        product_name = "Backpacks & Travel Gear"
+        ad_text = "🎒 الجو مناسب للخروج! شوف شنط الرحلات المميزة!"
 
     # 1. عرض الأنميشن
-    LOTTIE_URLS = {
+    anim_urls = {
         "rain": "https://lottie.host/9331e84a-c0b9-4f7d-815d-ed0f48866380/vGvFjPqXWp.json",
         "clear": "https://lottie.host/a8a5b293-61a7-47b8-80f2-b892a4066c0d/Y08T7N1p5N.json",
         "clouds": "https://lottie.host/17e23118-2e0f-48e0-a435-081831412d2b/qQ0JmX24jC.json",
         "default": "https://lottie.host/a06d87f7-f823-4556-9a5d-b4b609c2a265/gQz099j54N.json"
     }
-    anim_json = load_lottieurl(LOTTIE_URLS.get(main_cond if main_cond in LOTTIE_URLS else "default"))
-    if anim_json:
-        st_lottie(anim_json, height=250, key="weather_anim")
+    anim_json = load_lottieurl(anim_urls.get(main_cond if main_cond in anim_urls else "default"))
+    if anim_json: st_lottie(anim_json, height=250)
 
-    # 2. زر التقرير والبيانات المنظمة
-    if st.button("Get Detailed Report"):
-        notify_me(f"👤 بحث عن: {city} | {temp}°C")
+    # 2. عرض البيانات المنظمة للموبايل
+    if st.button("Show Weather Analysis"):
+        notify_me(f"💰 مستخدم مهتم بـ {city} | الجو {main_cond}")
         st.markdown("---")
-        
         c1, c2 = st.columns(2)
-        c1.metric("Temperature", f"{temp} °C")
-        c2.metric("Rain/Clouds", f"{weather_data['clouds']['all']}%")
+        c1.metric("Temp", f"{temp} °C")
+        c2.metric("Clouds", f"{weather_data['clouds']['all']}%")
         
         c3, c4 = st.columns(2)
-        c3.metric("Wind Speed", f"{weather_data['wind']['speed']} m/s")
+        c3.metric("Wind", f"{weather_data['wind']['speed']} m/s")
         c4.metric("Humidity", f"{weather_data['main']['humidity']}%")
         
-        st.markdown("---")
         st.map(pd.DataFrame({'lat': [weather_data['coord']['lat']], 'lon': [weather_data['coord']['lon']]}))
-        
-        icon_code = weather_data['weather'][0]['icon']
-        st.image(f"http://openweathermap.org/img/wn/{icon_code}@4x.png", width=100)
 
-    # 3. عرض شريط إعلانات أمازون بالأسفل
-    st.markdown(f'<div class="amazon-ads">🛒 <b>Amazon Offer:</b> {ad_content}</div>', unsafe_allow_html=True)
-
-else:
-    st.error("City not found!")
+    # --- 3. شريط إعلانات أمازون الربحي (في الأسفل) ---
+    st.markdown(f"""
+        <div class="amazon-ad-box">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="100"><br>
+            <p style="color: #232f3e; margin: 10px 0;">{ad_text}</p>
+            <a href="{AMAZON_AFFILIATE_URL}" class="ad-button">تسوق الآن من أمازون 🛒</a>
+            <p style="font-size: 0.7rem; margin-top: 10px; color: #666;">* عمولة خاصة لمستخدمي Weather Pro Max</p>
+        </div>
+    """, unsafe_allow_html=True)
 
 st.markdown("<br><center>Created by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
