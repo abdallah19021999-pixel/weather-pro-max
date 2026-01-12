@@ -10,7 +10,7 @@ st.set_page_config(page_title="Weather Pro Max", page_icon="🌤️", layout="wi
 API_KEY = st.secrets["OPENWEATHER_API_KEY"]
 AFFILIATE_ID = "abdallah2026-21"
 
-# --- دالة جلب البيانات (محرك OSM الخارق) ---
+# --- محركات البحث والبيانات ---
 @st.cache_data(ttl=3600)
 def get_coordinates(location_name):
     try:
@@ -32,60 +32,64 @@ def load_lottieurl(url: str):
     try: return requests.get(url).json()
     except: return None
 
-# --- محرك التأثيرات البصرية (Dynamic Theme Engine) ---
-def apply_weather_theme(condition, temp):
-    # الحالة الافتراضية (صافي/مشمس)
-    bg_color = "linear-gradient(135deg, #FF8C00 0%, #FFD700 100%)" # برتقالي وذهبي شمس
-    text_shadow = "2px 2px 10px rgba(255, 215, 0, 0.5)"
+# --- محرك التأثيرات الجوية الحية (Rain/Snow/Sun Effects) ---
+def apply_live_effects(condition, temp):
+    effect_css = ""
+    bg_gradient = "linear-gradient(to bottom, #1e3c72, #2a5298)" # Default
     
     if "rain" in condition or "drizzle" in condition:
-        bg_color = "linear-gradient(to bottom, #203a43, #2c5364)" # أزرق غامق ممطر
-        text_shadow = "0px 0px 15px rgba(0, 191, 255, 0.6)"
-    elif "cloud" in condition:
-        bg_color = "linear-gradient(to right, #bdc3c7, #2c3e50)" # رمادي غيمي
-        text_shadow = "none"
-    elif temp < 15:
-        bg_color = "linear-gradient(to top, #83a4d4, #b6fbff)" # ثلجي/بارد
-        text_shadow = "0px 0px 10px white"
+        bg_gradient = "linear-gradient(to bottom, #203a43, #2c5364)"
+        effect_css = """
+        .stApp::before {
+            content: ''; position: fixed; width: 100%; height: 100%; top: 0; left: 0;
+            background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png'), 
+                              linear-gradient(to bottom, rgba(255,255,255,0.1) 10%, transparent 100%);
+            animation: rain .3s linear infinite; z-index: 0; pointer-events: none;
+        }
+        @keyframes rain { 0% { background-position: 0 0; } 100% { background-position: 20px 100px; } }
+        """
+    elif "snow" in condition:
+        bg_gradient = "linear-gradient(to bottom, #83a4d4, #b6fbff)"
+        effect_css = """
+        .stApp::before {
+            content: '❄'; position: fixed; top: -10%; left: 50%; font-size: 24px; color: white;
+            text-shadow: 0 0 5px #fff; animation: snow 5s linear infinite; z-index: 0; pointer-events: none;
+        }
+        @keyframes snow { 0% { transform: translateY(0) translateX(0); } 100% { transform: translateY(110vh) translateX(50px); } }
+        """
+    elif "clear" in condition or temp > 28:
+        bg_gradient = "linear-gradient(135deg, #FF8C00 0%, #FFD700 100%)"
+        effect_css = """
+        .stApp::after {
+            content: ''; position: fixed; top: -100px; right: -100px; width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(255,255,224,0.4) 0%, transparent 70%);
+            animation: shine 10s infinite alternate; pointer-events: none;
+        }
+        @keyframes shine { from { transform: scale(1); } to { transform: scale(1.3); } }
+        """
 
     st.markdown(f"""
         <style>
-        .stApp {{
-            background: {bg_color};
-            background-attachment: fixed;
-            transition: all 0.8s ease-in-out;
-        }}
-        .main-title {{
-            font-size: 3rem !important;
-            font-weight: 800;
-            text-align: center;
-            color: white;
-            text-shadow: {text_shadow};
+        .stApp {{ background: {bg_gradient}; transition: background 1s ease; }}
+        {effect_css}
+        .main-card {{
+            background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(15px);
+            padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2);
             margin-bottom: 20px;
         }}
-        .amazon-ad-box {{
-            background: rgba(255, 255, 255, 0.9);
-            color: #232f3e;
-            padding: 25px;
-            border-radius: 20px;
-            text-align: center;
-            border-bottom: 8px solid #ff9900;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        .amazon-footer-ad {{
+            background: white; color: #232f3e; padding: 15px; border-radius: 12px;
+            text-align: center; margin-top: 50px; border-top: 4px solid #ff9900;
+            max-width: 600px; margin-left: auto; margin-right: auto; font-size: 0.9rem;
         }}
-        [data-testid="stMetric"] {{
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 15px !important;
-            border: 1px solid rgba(255,255,255,0.3);
-        }}
+        [data-testid="stMetric"] {{ background: rgba(0,0,0,0.2) !important; border-radius: 10px; }}
         </style>
         """, unsafe_allow_html=True)
 
 # واجهة المستخدم
-st.markdown('<h1 class="main-title">🌤️ Weather Pro Max</h1>', unsafe_allow_html=True)
+st.markdown('<h1 style="text-align:center; color:white; text-shadow: 2px 2px 10px rgba(0,0,0,0.5);">🌤️ Weather Pro Max</h1>', unsafe_allow_html=True)
 
-city_query = st.text_input("📍 ابحث عن أي مكان في العالم:", placeholder="اكتب اسم القرية أو المدينة هنا...")
+city_query = st.text_input("📍 ابحث عن أي قرية أو مدينة:", placeholder="اكتب هنا...")
 
 if city_query:
     lat, lon, full_name = get_coordinates(city_query)
@@ -93,49 +97,51 @@ if city_query:
     if lat:
         weather_data = get_weather_by_coords(lat, lon)
         if weather_data:
-            condition = weather_data['weather'][0]['main'].lower()
+            cond = weather_data['weather'][0]['main'].lower()
             temp = weather_data['main']['temp']
             
-            # تطبيق الثيم الحي بناءً على حالة الجو
-            apply_weather_theme(condition, temp)
+            apply_live_effects(cond, temp)
 
-            # الأنميشن
-            anim_urls = {
-                "rain": "https://lottie.host/9331e84a-c0b9-4f7d-815d-ed0f48866380/vGvFjPqXWp.json",
-                "clear": "https://lottie.host/a8a5b293-61a7-47b8-80f2-b892a4066c0d/Y08T7N1p5N.json",
-                "clouds": "https://lottie.host/17e23118-2e0f-48e0-a435-081831412d2b/qQ0JmX24jC.json"
-            }
-            anim_json = load_lottieurl(anim_urls.get(condition, "https://lottie.host/a06d87f7-f823-4556-9a5d-b4b609c2a265/gQz099j54N.json"))
-            if anim_json: st_lottie(anim_json, height=250)
+            # عرض البيانات في كارت زجاجي
+            with st.container():
+                st.markdown(f"<div class='main-card'><h3 style='text-align:center;'>📍 {full_name}</h3>", unsafe_allow_html=True)
+                
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("الحرارة", f"{temp} °C")
+                c2.metric("الغيوم", f"{weather_data['clouds']['all']}%")
+                c3.metric("الرياح", f"{weather_data['wind']['speed']} m/s")
+                c4.metric("الرطوبة", f"{weather_data['main']['humidity']}%")
+                
+                # الخريطة رجعت
+                st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=10)
+                st.markdown("</div>", unsafe_allow_html=True)
 
-            st.markdown(f"<h3 style='text-align:center;'>📍 {full_name}</h3>", unsafe_allow_html=True)
+            # ترشيحات ذكية للمنتجات
+            if "rain" in cond:
+                rec_text = "الدنيا بتمطر! ننصحك بـ: جاكيت وتربروف 🧥، شمسية متينة ☔، حذاء ضد الماء 🥾"
+                p_search = "rain+gear+waterproof"
+            elif temp > 28:
+                rec_text = "الجو حر شمس! ننصحك بـ: نظارة شمسية 🕶️، واقي شمس 🧴، كاب قطني 🧢"
+                p_search = "sunglasses+sunscreen+cap"
+            elif temp < 15:
+                rec_text = "الجو برد جداً! ننصحك بـ: بلوفر صوف 🧶، دفاية كهربائية ⚡، وشاح شتوي 🧣"
+                p_search = "winter+clothes+heater"
+            else:
+                rec_text = "الجو رائع! ننصحك بـ: شنطة ظهر للرحلات 🎒، حذاء مريح 👟، زجاجة مياه رياضية 💧"
+                p_search = "travel+backpack+shoes"
 
-            # المقاييس الأربعة بتصميم "الزجاج المضبب" (Glassmorphism)
-            c1, c2 = st.columns(2)
-            c1.metric("Temperature", f"{temp} °C")
-            c2.metric("Clouds", f"{weather_data['clouds']['all']}%")
-            c3, c4 = st.columns(2)
-            c3.metric("Wind Speed", f"{weather_data['wind']['speed']} m/s")
-            c4.metric("Humidity", f"{weather_data['main']['humidity']}%")
-
-            # روابط أمازون الذكية
-            p_search = "sunglasses" if temp > 25 else "winter+clothes" if temp < 15 else "umbrella" if "rain" in condition else "backpack"
             p_link = f"https://www.amazon.eg/s?k={p_search}&tag={AFFILIATE_ID}"
 
+            # الجزء السفلي (الاسم + الإعلان الصغير)
             st.markdown(f"""
-                <div class="amazon-ad-box">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="100">
-                    <p style="font-size:1.2rem; margin:15px 0;">اكتشف أفضل العروض المناسبة لجو {full_name} اليوم!</p>
-                    <a href="{p_link}" target="_blank" style="background:#ff9900; color:white; padding:12px 30px; text-decoration:none; border-radius:30px; font-weight:bold;">تسوّق الآن 🛒</a>
+                <center style='color:white; opacity:0.8; margin-top:40px;'>Created by: Abdallah Nabil | 2026</center>
+                <div class="amazon-footer-ad">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="70"><br>
+                    <b>💡 ترشيحنا لك:</b> {rec_text}<br>
+                    <a href="{p_link}" target="_blank" style="color:#0066c0; text-decoration:none; font-weight:bold;">تسوّق عروض اليوم من أمازون 🛒</a>
                 </div>
             """, unsafe_allow_html=True)
-            
-            if st.button("Explore Detailed Map"):
-                st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
     else:
-        st.error("❌ لم نجد هذا المكان، جرب كتابته بدقة أكبر.")
+        st.error("❌ لم نجد هذا المكان، جرب كتابة اسم المدينة والمحافظة.")
 else:
-    # ثيم افتراضي هادئ قبل البحث
-    st.markdown("<style>.stApp { background: linear-gradient(to bottom, #1e3c72, #2a5298); }</style>", unsafe_allow_html=True)
-
-st.markdown("<br><center style='color:white; opacity:0.6;'>Created by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
+    apply_live_effects("clear", 20) # الثيم الافتراضي
