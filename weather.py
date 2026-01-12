@@ -8,20 +8,16 @@ from deep_translator import GoogleTranslator
 st.set_page_config(page_title="Weather Pro Max", page_icon="🌤️", layout="wide", initial_sidebar_state="collapsed")
 
 API_KEY = st.secrets["OPENWEATHER_API_KEY"]
-TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
-TELEGRAM_CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
 AFFILIATE_ID = "abdallah2026-21"
 
-# دالة البحث الخارقة (تستخدم OpenStreetMap لإيجاد أي قرية في مصر)
+# --- دالة جلب البيانات (محرك OSM الخارق) ---
 @st.cache_data(ttl=3600)
-def get_coordinates_v2(location_name):
+def get_coordinates(location_name):
     try:
-        # البحث في قاعدة بيانات الخرائط المفتوحة
         url = f"https://nominatim.openstreetmap.org/search?q={location_name}&format=json&limit=1"
-        headers = {'User-Agent': 'WeatherApp_Abdallah_2026'}
+        headers = {'User-Agent': 'WeatherApp_2026'}
         res = requests.get(url, headers=headers, timeout=10).json()
-        if res:
-            return float(res[0]['lat']), float(res[0]['lon']), res[0]['display_name']
+        if res: return float(res[0]['lat']), float(res[0]['lon']), res[0]['display_name']
         return None, None, None
     except: return None, None, None
 
@@ -36,61 +32,85 @@ def load_lottieurl(url: str):
     try: return requests.get(url).json()
     except: return None
 
-# --- الـ CSS الأصلي (لم يتغير شيء) ---
-st.markdown(f"""
-    <style>
-    [data-testid="stSidebar"] {{ display: none; }}
-    .stApp {{ background: linear-gradient(to bottom, #1e3c72, #2a5298); color: white; }}
-    .ticker-wrap {{ width: 100%; overflow: hidden; background: rgba(0,0,0,0.3); padding: 8px 0; margin-bottom: 15px; }}
-    .ticker {{ display: inline-block; white-space: nowrap; animation: ticker 25s linear infinite; font-weight: bold; color: #00d4ff; }}
-    @keyframes ticker {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
-    .amazon-ad-box {{ background: white; color: #232f3e; padding: 20px; border-radius: 15px; text-align: center; margin-top: 30px; border-bottom: 5px solid #ff9900; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }}
-    .ad-button {{ background-color: #ff9900; color: white !important; padding: 10px 25px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block; margin-top: 10px; }}
-    [data-testid="stMetric"] {{ background: rgba(255,255,255,0.1); padding: 10px !important; border-radius: 10px; text-align: center; }}
-    </style>
-    """, unsafe_allow_html=True)
+# --- محرك التأثيرات البصرية (Dynamic Theme Engine) ---
+def apply_weather_theme(condition, temp):
+    # الحالة الافتراضية (صافي/مشمس)
+    bg_color = "linear-gradient(135deg, #FF8C00 0%, #FFD700 100%)" # برتقالي وذهبي شمس
+    text_shadow = "2px 2px 10px rgba(255, 215, 0, 0.5)"
+    
+    if "rain" in condition or "drizzle" in condition:
+        bg_color = "linear-gradient(to bottom, #203a43, #2c5364)" # أزرق غامق ممطر
+        text_shadow = "0px 0px 15px rgba(0, 191, 255, 0.6)"
+    elif "cloud" in condition:
+        bg_color = "linear-gradient(to right, #bdc3c7, #2c3e50)" # رمادي غيمي
+        text_shadow = "none"
+    elif temp < 15:
+        bg_color = "linear-gradient(to top, #83a4d4, #b6fbff)" # ثلجي/بارد
+        text_shadow = "0px 0px 10px white"
 
-st.markdown('<div class="ticker-wrap"><div class="ticker">🌍 نظام البحث الجغرافي الخارق مفعل: الآن نصل لأي قرية أو نجع في مصر بدقة الخرائط المفتوحة 🌤️</div></div>', unsafe_allow_html=True)
+    st.markdown(f"""
+        <style>
+        .stApp {{
+            background: {bg_color};
+            background-attachment: fixed;
+            transition: all 0.8s ease-in-out;
+        }}
+        .main-title {{
+            font-size: 3rem !important;
+            font-weight: 800;
+            text-align: center;
+            color: white;
+            text-shadow: {text_shadow};
+            margin-bottom: 20px;
+        }}
+        .amazon-ad-box {{
+            background: rgba(255, 255, 255, 0.9);
+            color: #232f3e;
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            border-bottom: 8px solid #ff9900;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }}
+        [data-testid="stMetric"] {{
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px !important;
+            border: 1px solid rgba(255,255,255,0.3);
+        }}
+        </style>
+        """, unsafe_allow_html=True)
 
-st.title("🌤️ Weather Pro Max Global AI")
+# واجهة المستخدم
+st.markdown('<h1 class="main-title">🌤️ Weather Pro Max</h1>', unsafe_allow_html=True)
 
-city_query = st.text_input("📍 ابحث عن أي مكان (قرية، مركز، مدينة):", placeholder="مثال: ميت غمر، دمنهور، قرية كذا...")
+city_query = st.text_input("📍 ابحث عن أي مكان في العالم:", placeholder="اكتب اسم القرية أو المدينة هنا...")
 
 if city_query:
-    # الخطوة 1: نجيب الإحداثيات بمحرك البحث الجديد
-    lat, lon, full_name = get_coordinates_v2(city_query)
+    lat, lon, full_name = get_coordinates(city_query)
     
     if lat:
-        # الخطوة 2: نجيب الطقس بناءً على الموقع الجغرافي
         weather_data = get_weather_by_coords(lat, lon)
-        
         if weather_data:
-            main_cond = weather_data['weather'][0]['main'].lower()
+            condition = weather_data['weather'][0]['main'].lower()
             temp = weather_data['main']['temp']
-
-            # الروابط الذكية (كما هي في كودك)
-            if "rain" in main_cond:
-                ad_text, p_search = "☔ الدنيا بتمطر؟ الحق عروض الشماسي!", "umbrella"
-            elif temp > 25:
-                ad_text, p_search = "🕶️ الجو شمس؟ شوف نظارات الشمس الأصلية!", "sunglasses"
-            elif temp < 15:
-                ad_text, p_search = "🧥 الجو برد؟ شوف كولكشن الشتاء!", "winter+clothes"
-            else:
-                ad_text, p_search = "🎒 الجو رايق! شوف عروض الرحلات!", "backpacks"
-
-            p_link = f"https://www.amazon.eg/s?k={p_search}&tag={AFFILIATE_ID}"
+            
+            # تطبيق الثيم الحي بناءً على حالة الجو
+            apply_weather_theme(condition, temp)
 
             # الأنميشن
-            anim_urls = {"rain": "https://lottie.host/9331e84a-c0b9-4f7d-815d-ed0f48866380/vGvFjPqXWp.json",
-                         "clear": "https://lottie.host/a8a5b293-61a7-47b8-80f2-b892a4066c0d/Y08T7N1p5N.json",
-                         "clouds": "https://lottie.host/17e23118-2e0f-48e0-a435-081831412d2b/qQ0JmX24jC.json",
-                         "default": "https://lottie.host/a06d87f7-f823-4556-9a5d-b4b609c2a265/gQz099j54N.json"}
-            anim_json = load_lottieurl(anim_urls.get(main_cond, anim_urls["default"]))
-            if anim_json: st_lottie(anim_json, height=220)
+            anim_urls = {
+                "rain": "https://lottie.host/9331e84a-c0b9-4f7d-815d-ed0f48866380/vGvFjPqXWp.json",
+                "clear": "https://lottie.host/a8a5b293-61a7-47b8-80f2-b892a4066c0d/Y08T7N1p5N.json",
+                "clouds": "https://lottie.host/17e23118-2e0f-48e0-a435-081831412d2b/qQ0JmX24jC.json"
+            }
+            anim_json = load_lottieurl(anim_urls.get(condition, "https://lottie.host/a06d87f7-f823-4556-9a5d-b4b609c2a265/gQz099j54N.json"))
+            if anim_json: st_lottie(anim_json, height=250)
 
-            st.write(f"📍 **الموقع المكتشف:** {full_name}")
+            st.markdown(f"<h3 style='text-align:center;'>📍 {full_name}</h3>", unsafe_allow_html=True)
 
-            # المقاييس الـ 4
+            # المقاييس الأربعة بتصميم "الزجاج المضبب" (Glassmorphism)
             c1, c2 = st.columns(2)
             c1.metric("Temperature", f"{temp} °C")
             c2.metric("Clouds", f"{weather_data['clouds']['all']}%")
@@ -98,15 +118,24 @@ if city_query:
             c3.metric("Wind Speed", f"{weather_data['wind']['speed']} m/s")
             c4.metric("Humidity", f"{weather_data['main']['humidity']}%")
 
-            if st.button("Analysis & Map"):
+            # روابط أمازون الذكية
+            p_search = "sunglasses" if temp > 25 else "winter+clothes" if temp < 15 else "umbrella" if "rain" in condition else "backpack"
+            p_link = f"https://www.amazon.eg/s?k={p_search}&tag={AFFILIATE_ID}"
+
+            st.markdown(f"""
+                <div class="amazon-ad-box">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="100">
+                    <p style="font-size:1.2rem; margin:15px 0;">اكتشف أفضل العروض المناسبة لجو {full_name} اليوم!</p>
+                    <a href="{p_link}" target="_blank" style="background:#ff9900; color:white; padding:12px 30px; text-decoration:none; border-radius:30px; font-weight:bold;">تسوّق الآن 🛒</a>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            if st.button("Explore Detailed Map"):
                 st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
-
-            st.markdown(f"""<div class="amazon-ad-box">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="90"><br>
-                <p>{ad_text}</p>
-                <a href="{p_link}" target="_blank" class="ad-button">اطلب الآن بخصم 🛒</a>
-                </div>""", unsafe_allow_html=True)
     else:
-        st.error("❌ لم نجد هذا المكان. حاول كتابة اسم القرية متبوعاً بالمحافظة (مثل: بلقاس، الدقهلية).")
+        st.error("❌ لم نجد هذا المكان، جرب كتابته بدقة أكبر.")
+else:
+    # ثيم افتراضي هادئ قبل البحث
+    st.markdown("<style>.stApp { background: linear-gradient(to bottom, #1e3c72, #2a5298); }</style>", unsafe_allow_html=True)
 
-st.markdown("<br><center style='opacity:0.7;'>Created by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
+st.markdown("<br><center style='color:white; opacity:0.6;'>Created by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
