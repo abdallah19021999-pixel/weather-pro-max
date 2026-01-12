@@ -36,7 +36,7 @@ def load_lottieurl(url: str):
         return r.json() if r.status_code == 200 else None
     except: return None
 
-# --- Visual Effects Engine ---
+# --- Live Weather Visuals ---
 def apply_weather_visuals(condition, temp):
     bg_gradient = "linear-gradient(to bottom, #1e3c72, #2a5298)"
     overlay = ""
@@ -55,16 +55,20 @@ def apply_weather_visuals(condition, temp):
         <style>
         .stApp {{ background: {bg_gradient}; transition: all 1s ease; color: white; }}
         [data-testid="stMetric"] {{ background: rgba(255, 255, 255, 0.1) !important; backdrop-filter: blur(5px); border-radius: 12px; }}
-        .main-card {{ background: rgba(0, 0, 0, 0.2); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); margin-top: 15px; }}
-        .amazon-footer {{ background: white; color: #232f3e; padding: 15px; border-radius: 15px; text-align: center; margin-top: 40px; border-bottom: 5px solid #ff9900; max-width: 500px; margin-left: auto; margin-right: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }}
+        .main-card {{ background: rgba(0, 0, 0, 0.3); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); margin-top: 15px; }}
+        .amazon-footer {{ background: white; color: #232f3e; padding: 15px; border-radius: 15px; text-align: center; margin-top: 50px; border-bottom: 5px solid #ff9900; max-width: 500px; margin-left: auto; margin-right: auto; }}
         </style>
         {overlay}
         """, unsafe_allow_html=True)
 
-# --- UI Body ---
-st.markdown("<h1 style='text-align: center; text-shadow: 2px 2px 10px rgba(0,0,0,0.3);'>🌤️ Weather Pro Max</h1>", unsafe_allow_html=True)
+# --- App Layout ---
+st.markdown("<h1 style='text-align: center;'>🌤️ Weather Pro Max</h1>", unsafe_allow_html=True)
 
-search_city = st.text_input("📍 Search City (English/عربي):", placeholder="Type city or village name...")
+search_city = st.text_input("📍 Search City (English/عربي):", placeholder="Enter location name...")
+
+# We use session state to track if details should be shown
+if "show_details" not in st.session_state:
+    st.session_state.show_details = False
 
 if search_city:
     lat, lon, display_name = get_coordinates(search_city)
@@ -76,7 +80,7 @@ if search_city:
             temp = data['main']['temp']
             apply_weather_visuals(cond, temp)
 
-            # Lottie Animation
+            # Weather Animation
             anim_urls = {
                 "rain": "https://lottie.host/9331e84a-c0b9-4f7d-815d-ed0f48866380/vGvFjPqXWp.json",
                 "clear": "https://lottie.host/a8a5b293-61a7-47b8-80f2-b892a4066c0d/Y08T7N1p5N.json",
@@ -87,40 +91,40 @@ if search_city:
 
             st.markdown(f"<h3 style='text-align:center;'>{display_name}</h3>", unsafe_allow_html=True)
             
-            # --- The Button You Asked For ---
-            if st.button("Show Analysis Details"):
+            # --- Constant Button Location ---
+            col_btn1, col_btn2, col_btn3 = st.columns([1,1,1])
+            with col_btn2:
+                show_btn = st.button("Explore Local Map & Analysis", use_container_width=True)
+            
+            if show_btn:
+                st.session_state.show_details = not st.session_state.show_details
+
+            if st.session_state.show_details:
                 st.markdown("<div class='main-card'>", unsafe_allow_html=True)
                 m1, m2, m3, m4 = st.columns(4)
                 m1.metric("Temperature", f"{temp}°C")
                 m2.metric("Clouds", f"{data['clouds']['all']}%")
                 m3.metric("Wind Speed", f"{data['wind']['speed']} m/s")
                 m4.metric("Humidity", f"{data['main']['humidity']}%")
-                
                 st.markdown("---")
                 st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=11)
                 st.markdown("</div>", unsafe_allow_html=True)
 
-            # Smart Amazon Logic
-            if "rain" in cond:
-                rec, p_cat = "Stay dry with Waterproof Jackets & Umbrellas ☔", "waterproof+jacket+umbrella"
-            elif temp > 28:
-                rec, p_cat = "Keep cool with Sunglasses & Summer Shoes 🕶️", "sunglasses+summer+shoes"
-            elif temp < 15:
-                rec, p_cat = "Stay warm with Winter Boots & Coats 🧥", "winter+coat+boots"
-            else:
-                rec, p_cat = "Nice weather! Check our Sneakers & Backpacks 👟", "sneakers+backpack"
+            # Smart Recommendations
+            p_cat = "umbrella" if "rain" in cond else "sunglasses" if temp > 28 else "winter+jacket"
+            rec_msg = "Stay safe and check our top picks for today's weather!"
 
             # Footer
-            st.markdown(f"<center style='color:white; opacity:0.6; margin-top:50px;'>Created by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
+            st.markdown(f"<center style='color:white; opacity:0.6; margin-top:60px;'>Created by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
             
             st.markdown(f"""
                 <div class="amazon-footer">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="70"><br>
-                    <p style="margin:8px 0;"><b>Today's Recommendation:</b><br>{rec}</p>
-                    <a href="https://www.amazon.eg/s?k={p_cat}&tag={AFFILIATE_ID}" target="_blank" style="text-decoration:none; color:#0066c0; font-weight:bold;">Shop These Products 🛒</a>
+                    <p style="margin:5px 0;"><b>Recommendation:</b> {rec_msg}</p>
+                    <a href="https://www.amazon.eg/s?k={p_cat}&tag={AFFILIATE_ID}" target="_blank" style="text-decoration:none; color:#0066c0; font-weight:bold;">Shop on Amazon 🛒</a>
                 </div>
             """, unsafe_allow_html=True)
     else:
-        st.error("Location not found. Please check the spelling.")
+        st.error("Location not found.")
 else:
     st.markdown("<style>.stApp { background: linear-gradient(to bottom, #1e3c72, #2a5298); }</style>", unsafe_allow_html=True)
