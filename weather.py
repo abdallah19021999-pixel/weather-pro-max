@@ -54,35 +54,50 @@ def get_forecast(lat, lon):
         return requests.get(url).json()
     except: return None
 
-# --- Custom UI CSS (Centering & Alignment Fix) ---
+# --- Custom UI CSS & Atmosphere Effects ---
 def apply_custom_style(condition, temp):
-    accent = "#00f2ff" if "rain" in condition else "#ff9900"
+    # تحديد نوع التأثير البصري
+    if "rain" in condition or "drizzle" in condition:
+        p_color, p_w, p_h, p_speed = "#4facfe", "2px", "20px", "0.8s" # مطر
+    elif "snow" in condition or temp <= 2:
+        p_color, p_w, p_h, p_speed = "#ffffff", "6px", "6px", "4s"   # ثلج
+    else:
+        p_color, p_w, p_h, p_speed = "#ffcc33", "2px", "2px", "6s"   # رماد ذهبي
     
     st.markdown(f"""
         <style>
-        /* الخلفية العامة وتوسيط المحتوى */
         .stApp {{
             background: #0f172a !important;
             color: white !important;
-            display: flex;
-            align-items: center;
         }}
         
-        /* ضبط صندوق البحث في المنتصف */
-        .stTextInput {{
-            max-width: 700px;
-            margin: 0 auto;
+        /* محرك الجزيئات الخلفي */
+        .atmosphere {{
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; pointer-events: none; overflow: hidden;
+            background: radial-gradient(circle at 50% 50%, #1a1a1c 0%, #0f172a 100%);
         }}
-        
+        .particle {{
+            position: absolute; background: {p_color};
+            width: {p_w}; height: {p_h}; opacity: 0.4;
+            border-radius: 50%; animation: fall {p_speed} linear infinite;
+        }}
+        @keyframes fall {{
+            from {{ transform: translateY(-10vh) translateX(0); }}
+            to {{ transform: translateY(110vh) translateX(20px); }}
+        }}
+
+        /* ضبط صندوق البحث */
+        .stTextInput {{ max-width: 700px; margin: 0 auto; }}
         .stTextInput input {{
             background-color: white !important;
             color: #1e293b !important;
             border-radius: 12px !important;
-            border: 3px solid {accent} !important;
-            text-align: center; /* توسيط نص البحث */
+            border: 3px solid {p_color} !important;
+            text-align: center;
         }}
 
-        /* توسيط العناوين والأرقام داخل مربعات الـ Metrics */
+        /* توسيط الـ Metrics */
         [data-testid="stMetric"] {{
             background: rgba(255, 255, 255, 0.05) !important;
             backdrop-filter: blur(10px);
@@ -91,87 +106,55 @@ def apply_custom_style(condition, temp):
             padding: 20px !important;
             display: flex !important;
             flex-direction: column !important;
-            align-items: center !important; /* توسيط أفقي */
-            justify-content: center !important; /* توسيط رأسي */
+            align-items: center !important;
+            justify-content: center !important;
         }}
-        
         [data-testid="stMetricValue"] {{ 
-            color: {accent} !important; 
+            color: {p_color} !important; 
             font-size: 2.5rem !important;
-            width: 100%;
-            text-align: center !important;
-            display: block !important;
+            width: 100%; text-align: center !important; display: block !important;
         }}
-        
         [data-testid="stMetricLabel"] {{ 
             color: #94a3b8 !important;
-            width: 100%;
-            text-align: center !important;
-            display: block !important;
-            font-size: 1.1rem !important;
-            margin-bottom: 5px !important;
+            width: 100%; text-align: center !important; display: block !important;
         }}
 
-        /* الزرار الثابت موسط */
-        .stButton {{
-            display: flex;
-            justify-content: center;
-        }}
-        
+        /* الزرار الموسط */
+        .stButton {{ display: flex; justify-content: center; }}
         .stButton button {{
-            background: {accent} !important;
+            background: {p_color} !important;
             color: #0f172a !important;
             font-weight: bold !important;
             border-radius: 12px !important;
             padding: 10px 40px !important;
-            max-width: 400px;
-        }}
-
-        .alert-style {{
-            background: rgba(255, 75, 75, 0.2);
-            border: 1px solid #ff4b4b;
-            padding: 15px;
-            text-align: center;
-            border-radius: 12px;
-            max-width: 800px;
-            margin: 0 auto 20px auto;
         }}
 
         .footer-amazon {{
-            background: white;
-            color: #232f3e;
-            padding: 20px;
-            border-radius: 20px;
-            text-align: center;
-            margin: 50px auto 0 auto;
-            max-width: 600px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background: white; color: #232f3e; padding: 20px;
+            border-radius: 20px; text-align: center;
+            margin: 50px auto 0 auto; max-width: 600px;
         }}
         
-        h1, h2 {{
-            text-align: center !important;
-            width: 100%;
-        }}
+        h1, h2 {{ text-align: center !important; width: 100%; }}
         </style>
+        <div class="atmosphere">
+            {" ".join([f'<div class="particle" style="left:{i*4}%; animation-delay:{i*0.2}s"></div>' for i in range(25)])}
+        </div>
     """, unsafe_allow_html=True)
 
 # --- Layout ---
-# هيدر موسط
-st.markdown(f"<h1 style='color: white; margin-bottom: 0;'>{T['title']}</h1>", unsafe_allow_html=True)
+st.markdown(f"<h1>{T['title']}</h1>", unsafe_allow_html=True)
 
-# زرار اللغة في مكان منفصل تحت العنوان لضمان التنسيق
-col_lang_1, col_lang_2, col_lang_3 = st.columns([4.5, 1, 4.5])
-with col_lang_2:
+# زرار اللغة
+col_l1, col_l2, col_l3 = st.columns([4.5, 1, 4.5])
+with col_l2:
     if st.button("🌐 AR/EN", use_container_width=True):
         st.session_state.lang = "AR" if st.session_state.lang == "EN" else "EN"
         st.rerun()
 
 st.markdown("<br>", unsafe_allow_html=True)
-
-# Search Box
 query = st.text_input("📍", placeholder=T["search_place"], label_visibility="collapsed")
 
-# Fixed Analyze Button
 b_col1, b_col2, b_col3 = st.columns([1, 1.5, 1])
 with b_col2:
     analyze_click = st.button(T["btn_analyze"], use_container_width=True)
@@ -185,14 +168,12 @@ if query:
             cond, temp = curr['weather'][0]['main'].lower(), curr['main']['temp']
             apply_custom_style(cond, temp)
             
-            # Rain Alert
             will_rain = any("rain" in f['weather'][0]['main'].lower() for f in forecast['list'][:8])
             if will_rain:
-                st.markdown(f'<div class="alert-style">{T["alert_rain"]}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="alert-style" style="background:rgba(255,75,75,0.2); border:1px solid #ff4b4b; padding:15px; border-radius:12px; text-align:center; margin:0 auto 20px auto; max-width:800px;">{T["alert_rain"]}</div>', unsafe_allow_html=True)
             
             st.markdown(f"<h2>{name}</h2>", unsafe_allow_html=True)
             
-            # Metrics موسطة ومنظمة
             m_col1, m_col2, m_col3, m_col4 = st.columns(4)
             with m_col1: st.metric(T["temp"], f"{temp}°C")
             with m_col2: st.metric(T["clouds"], f"{curr['clouds']['all']}%")
@@ -204,7 +185,7 @@ if query:
                 st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=12)
 
             # Footer
-            p_cat = "umbrella" if will_rain else "sunglasses" if temp > 28 else "winter+jacket"
+            p_cat = "snow+boots" if temp <= 2 else "umbrella" if "rain" in cond else "sunglasses"
             st.markdown(f"<p style='text-align:center; opacity:0.5; margin-top:50px;'>Created by: Abdallah Nabil | 2026</p>", unsafe_allow_html=True)
             st.markdown(f"""<div class="footer-amazon">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="80"><br>
