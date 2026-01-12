@@ -15,50 +15,52 @@ if "lang" not in st.session_state:
 # --- Translations ---
 texts = {
     "EN": {
-        "title": "Weather Pro Max", "search_place": "Search city...",
+        "title": "Weather Pro Max", "search_place": "Search city or village...",
         "btn_analyze": "Explore Analysis & Map", "temp": "Temperature",
         "clouds": "Clouds", "wind": "Wind Speed", "humidity": "Humidity",
-        "shop": "Shop Deals on Amazon 🛒", "warn_search": "Search for a city first!"
+        "shop": "Shop Deals on Amazon 🛒", "warn_search": "Please search for a city first!"
     },
     "AR": {
-        "title": "وذر برو ماكس", "search_place": "ابحث عن مدينة...",
+        "title": "وذر برو ماكس", "search_place": "ابحث عن مدينة أو قرية...",
         "btn_analyze": "عرض التحليل والخريطة", "temp": "الحرارة",
         "clouds": "الغيوم", "wind": "الرياح", "humidity": "الرطوبة",
-        "shop": "تسوق على أمازون 🛒", "warn_search": "ابحث عن مدينة أولاً!"
+        "shop": "تسوق على أمازون 🛒", "warn_search": "من فضلك ابحث عن مدينة أولاً!"
     }
 }
 T = texts[st.session_state.lang]
 
+# --- Functions ---
 @st.cache_data(ttl=600)
-def get_weather(city_name):
+def get_weather(city):
     try:
-        url = f"https://api.openweathermap.org/data/2.5/weather?q={city_name}&appid={API_KEY}&units=metric"
-        return requests.get(url).json()
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric"
+        res = requests.get(url).json()
+        return res if res.get("cod") == 200 else None
     except: return None
 
-# --- محرك التأثيرات البصرية الدائمة ---
-def apply_atmosphere(condition, temp):
+# --- محرك التأثيرات الجوية الدائم والتنسيق المظبوط ---
+def apply_style_engine(condition, temp):
     condition = condition.lower()
-    
-    # تحديد نوع التأثير بناءً على الحالة
+    # برمجة أنواع الجو
     if "rain" in condition or "drizzle" in condition:
-        p_color, p_w, p_h, p_speed, p_count = "#4facfe", "2px", "25px", "0.7s", 30 # مطر
+        p_color, p_w, p_h, p_speed, p_count = "#4facfe", "2px", "30px", "0.7s", 40 # مطر
     elif "snow" in condition or temp <= 2:
-        p_color, p_w, p_h, p_speed, p_count = "#ffffff", "6px", "6px", "5s", 40   # ثلج
+        p_color, p_w, p_h, p_speed, p_count = "#ffffff", "8px", "8px", "4s", 50   # ثلج
     elif "clear" in condition:
-        p_color, p_w, p_h, p_speed, p_count = "#ffeb3b", "100px", "100px", "10s", 3 # شمس (وهج)
+        p_color, p_w, p_h, p_speed, p_count = "#ffeb3b", "150px", "150px", "10s", 4 # شمس
     else:
-        p_color, p_w, p_h, p_speed, p_count = "#ffcc33", "2px", "2px", "8s", 20   # غيوم/رماد
+        p_color, p_w, p_h, p_speed, p_count = "#94a3b8", "3px", "3px", "6s", 30   # غيوم/رماد
 
     st.markdown(f"""
         <style>
-        .stApp {{ background: #0a0a0b !important; }}
+        /* الأساسيات */
+        .stApp {{ background-color: #0f172a !important; color: white !important; }}
         
-        /* طبقة الجرافيكس الثابتة */
-        .atmosphere-layer {{
+        /* طبقة الجو الثابتة في الخلفية */
+        .weather-bg {{
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: -1; pointer-events: none; overflow: hidden;
-            background: radial-gradient(circle at 50% 50%, #1a1a1c, #000);
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
         }}
         
         .particle {{
@@ -66,39 +68,69 @@ def apply_atmosphere(condition, temp):
             width: {p_w}; height: {p_h};
             opacity: {"0.1" if "clear" in condition else "0.4"};
             border-radius: {"50%" if "rain" not in condition else "0%"};
-            filter: {"blur(40px)" if "clear" in condition else "none"};
+            filter: {"blur(60px)" if "clear" in condition else "none"};
             animation: fall {p_speed} linear infinite;
         }}
 
         @keyframes fall {{
             from {{ transform: translateY(-20vh) translateX(0); }}
-            to {{ transform: translateY(120vh) translateX(30px); }}
+            to {{ transform: translateY(120vh) translateX(40px); }}
         }}
 
-        /* تنسيق البحث */
+        /* توسيط البحث والمدخلات */
+        .stTextInput {{ max-width: 700px; margin: 0 auto; }}
         .stTextInput input {{
-            background: white !important; color: black !important;
-            border-radius: 12px !important; text-align: center; font-weight: bold;
-            border: 3px solid {p_color if "clear" not in condition else "#ff9900"} !important;
+            background: white !important; color: #1e293b !important;
+            border-radius: 15px !important; text-align: center;
+            border: 4px solid {p_color if "clear" not in condition else "#ff9900"} !important;
+            font-size: 1.2rem !important; font-weight: bold;
         }}
-        
-        /* تنسيق الـ Metrics */
+
+        /* توسيط المربعات (الزوايا المظبوطة) */
         [data-testid="stMetric"] {{
             background: rgba(255, 255, 255, 0.05) !important;
-            border: 1px solid rgba(255,255,255,0.1); border-radius: 20px;
-            text-align: center; display: flex; flex-direction: column; align-items: center;
+            backdrop-filter: blur(10px);
+            border-radius: 20px !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            padding: 20px !important;
+            display: flex !important; flex-direction: column !important;
+            align-items: center !important; justify-content: center !important;
         }}
-        [data-testid="stMetricValue"] {{ color: {p_color if "clear" not in condition else "#ffeb3b"} !important; text-align: center !important; width:100%; }}
-        [data-testid="stMetricLabel"] {{ text-align: center !important; width:100%; }}
+        [data-testid="stMetricValue"] {{ 
+            color: {p_color if "clear" not in condition else "#ffeb3b"} !important; 
+            font-size: 2.6rem !important; text-align: center !important; width: 100%;
+        }}
+        [data-testid="stMetricLabel"] {{ 
+            color: #cbd5e1 !important; font-size: 1.1rem !important;
+            text-align: center !important; width: 100%;
+        }}
+
+        /* الزرار موسط */
+        .stButton {{ display: flex; justify-content: center; }}
+        .stButton button {{
+            background: {p_color if "clear" not in condition else "#ff9900"} !important;
+            color: #0f172a !important; font-weight: bold !important;
+            border-radius: 12px !important; padding: 10px 50px !important;
+        }}
+
+        /* كارت أمازون الموسط */
+        .footer-amazon {{
+            background: white; color: #232f3e; padding: 25px;
+            border-radius: 25px; text-align: center;
+            margin: 50px auto; max-width: 500px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+        }}
+        
+        h1, h2 {{ text-align: center !important; width: 100%; }}
         </style>
         
-        <div class="atmosphere-layer">
-            {" ".join([f'<div class="particle" style="left:{i*(100/p_count)}%; animation-delay:{i*0.4}s"></div>' for i in range(p_count)])}
+        <div class="weather-bg">
+            {" ".join([f'<div class="particle" style="left:{i*(100/p_count)}%; animation-delay:{i*0.3}s"></div>' for i in range(p_count)])}
         </div>
     """, unsafe_allow_html=True)
 
-# --- App Layout ---
-st.markdown(f"<h1 style='text-align:center;'>{T['title']}</h1>", unsafe_allow_html=True)
+# --- Layout ---
+st.markdown(f"<h1>{T['title']}</h1>", unsafe_allow_html=True)
 
 # زرار اللغة
 c1, c2, c3 = st.columns([4.5, 1, 4.5])
@@ -107,39 +139,50 @@ with c2:
         st.session_state.lang = "AR" if st.session_state.lang == "EN" else "EN"
         st.rerun()
 
+# صندوق البحث
 query = st.text_input("📍", placeholder=T["search_place"], label_visibility="collapsed")
 
-b1, b2, b3 = st.columns([1, 1.5, 1])
-with b2: analyze = st.button(T["btn_analyze"], use_container_width=True)
+# زرار التحليل
+bc1, bc2, bc3 = st.columns([1, 1.5, 1])
+with bc2: analyze_click = st.button(T["btn_analyze"], use_container_width=True)
 
 if query:
     data = get_weather(query)
-    if data and data.get("main"):
+    if data:
         cond = data['weather'][0]['main'].lower()
         temp = data['main']['temp']
         
-        # تطبيق التأثير اللحظي والدائم
-        apply_atmosphere(cond, temp)
+        # تشغيل المحرك الجوي
+        apply_style_engine(cond, temp)
         
         # ترجمة اسم المدينة
         tr = GoogleTranslator(source='auto', target='ar' if st.session_state.lang=="AR" else 'en')
-        st.markdown(f"<h2 style='text-align:center;'>{tr.translate(data['name'])}</h2>", unsafe_allow_html=True)
+        city_display = tr.translate(data['name'])
         
+        st.markdown(f"<h2>{city_display}</h2>", unsafe_allow_html=True)
+        
+        # Metrics موسطة تماماً
         m1, m2, m3, m4 = st.columns(4)
         m1.metric(T["temp"], f"{temp}°C")
         m2.metric(T["clouds"], f"{data['clouds']['all']}%")
         m3.metric(T["wind"], f"{data['wind']['speed']} m/s")
         m4.metric(T["humidity"], f"{data['main']['humidity']}%")
 
-        if analyze:
-            st.map(pd.DataFrame({'lat': [data['coord']['lat']], 'lon': [data['coord']['lon']]}), zoom=10)
+        if analyze_click:
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.map(pd.DataFrame({'lat': [data['coord']['lat']], 'lon': [data['coord']['lon']]}), zoom=11)
 
-        # Footer
+        # Footer Amazon
         p_cat = "snow+boots" if temp <= 2 else "umbrella" if "rain" in cond else "sunglasses"
-        st.markdown(f"""<div style="background:white; padding:20px; border-radius:20px; text-align:center; margin-top:50px; max-width:500px; margin-left:auto; margin-right:auto;">
-            <a href="https://www.amazon.eg/s?k={p_cat}&tag={AFFILIATE_ID}" target="_blank" style="color:#0066c0; font-weight:bold; text-decoration:none;">{T['shop']}</a>
+        st.markdown(f"""<div class="footer-amazon">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="90"><br>
+            <a href="https://www.amazon.eg/s?k={p_cat}&tag={AFFILIATE_ID}" target="_blank" style="text-decoration:none; color:#0066c0; font-weight:bold; font-size:1.2rem;">{T['shop']}</a>
         </div>""", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align:center; opacity:0.4;'>Abdallah Nabil | 2026</p>", unsafe_allow_html=True)
     else:
-        st.error("City not found")
+        st.error("City not found. Please check the name.")
 else:
-    apply_atmosphere("clear", 25) # تأثير الشمس الافتراضي
+    # الحالة الافتراضية (شمس هادئة)
+    apply_style_engine("clear", 25)
+    if analyze_click:
+        st.warning(T["warn_search"])
