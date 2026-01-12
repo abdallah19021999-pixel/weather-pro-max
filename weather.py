@@ -15,25 +15,21 @@ if "lang" not in st.session_state:
 # --- Translations ---
 texts = {
     "EN": {
-        "title": "Weather Pro Max", "search_place": "Type city or village name...",
+        "title": "Weather Pro Max", "search_place": "Search city or village...",
         "btn_analyze": "Explore Analysis & Map", "temp": "Temperature",
         "clouds": "Clouds", "wind": "Wind Speed", "humidity": "Humidity",
-        "shop": "Shop Deals on Amazon 🛒", 
-        "alert_rain": "⚠️ Rain expected in the next 24 hours!",
-        "warn_search": "Please enter a location first!"
+        "shop": "Shop Deals on Amazon 🛒", "alert_rain": "⚠️ Rain expected soon!"
     },
     "AR": {
-        "title": "وذر برو ماكس", "search_place": "اكتب اسم المدينة أو القرية...",
+        "title": "وذر برو ماكس", "search_place": "ابحث عن مدينة أو قرية...",
         "btn_analyze": "عرض التحليل والخريطة", "temp": "الحرارة",
         "clouds": "الغيوم", "wind": "الرياح", "humidity": "الرطوبة",
-        "shop": "تسوق على أمازون 🛒",
-        "alert_rain": "⚠️ تنبيه: أمطار متوقعة خلال 24 ساعة!",
-        "warn_search": "من فضلك ابحث عن مكان أولاً!"
+        "shop": "تسوق على أمازون 🛒", "alert_rain": "⚠️ أمطار متوقعة قريباً!"
     }
 }
 T = texts[st.session_state.lang]
 
-# --- Functions ---
+# --- Logic Functions ---
 @st.cache_data(ttl=3600)
 def get_coordinates(location_name, target_lang):
     try:
@@ -54,130 +50,115 @@ def get_forecast(lat, lon):
         return requests.get(url).json()
     except: return None
 
-# --- Custom Clean UI CSS ---
-def apply_custom_style(condition, temp):
-    accent = "#00f2ff" if "rain" in condition else "#ff9900"
-    
+# --- Advanced Elden Ring Atmosphere CSS ---
+def apply_elden_style(condition, temp):
+    # اختيار نوع التأثير بناءً على الجو
+    if "rain" in condition:
+        particle_color, particle_speed = "#4facfe", "1s" # مطر
+    elif "snow" in condition or temp < 5:
+        particle_color, particle_speed = "#ffffff", "5s" # ثلج
+    else:
+        particle_color, particle_speed = "#ffcc33", "8s" # رماد/غبار ذهبي (Elden Style)
+
     st.markdown(f"""
         <style>
-        /* الخلفية العامة */
-        .stApp {{
-            background: #0f172a !important;
-            color: white !important;
-        }}
+        .stApp {{ background: #0a0a0b !important; color: white !important; }}
         
-        /* أهم تعديل: لون الكتابة داخل البحث */
-        .stTextInput input {{
-            background-color: white !important;
-            color: #1e293b !important; /* لون داكن للوضوح */
-            border-radius: 10px !important;
-            border: 2px solid {accent} !important;
-            font-size: 1.1rem !important;
-            padding: 10px !important;
+        /* طبقة الجرافيكس المتحركة في الخلفية */
+        .atmosphere {{
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; pointer-events: none;
+            background: radial-gradient(circle at 50% 50%, #1a1a1c, #000);
+            overflow: hidden;
+        }}
+        .particle {{
+            position: absolute; background: {particle_color};
+            width: 2px; height: 15px; opacity: 0.3;
+            animation: fall {particle_speed} linear infinite;
+        }}
+        @keyframes fall {{
+            from {{ transform: translateY(-10vh) translateX(0); }}
+            to {{ transform: translateY(110vh) translateX(20px); }}
         }}
 
-        /* تنسيق الأرقام والـ Metrics */
+        /* صندوق البحث - واضح جداً */
+        .stTextInput input {{
+            background: white !important; color: #111 !important;
+            border-radius: 12px !important; padding: 12px !important;
+            border: 3px solid #333 !important; font-size: 1.1rem !important;
+        }}
+
+        /* المقاييس - موسطة ومنظمة */
         [data-testid="stMetric"] {{
-            background: rgba(255, 255, 255, 0.05) !important;
-            backdrop-filter: blur(10px);
-            border-radius: 15px !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            text-align: center !important;
+            background: rgba(255, 255, 255, 0.03) !important;
+            backdrop-filter: blur(10px); border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.05); text-align: center !important;
         }}
         [data-testid="stMetricValue"] {{ 
-            color: {accent} !important; 
-            font-size: 2.5rem !important;
-            justify-content: center !important;
+            color: {particle_color} !important; font-size: 2.5rem !important;
+            text-shadow: 0 0 15px {particle_color}55; justify-content: center !important;
         }}
-        [data-testid="stMetricLabel"] {{ 
-            justify-content: center !important;
-            color: #94a3b8 !important;
-        }}
+        [data-testid="stMetricLabel"] {{ justify-content: center !important; color: #777 !important; }}
 
         /* الزرار الثابت */
         .stButton button {{
-            background: {accent} !important;
-            color: #0f172a !important;
-            font-weight: bold !important;
-            border-radius: 10px !important;
-            width: 100% !important;
+            background: #222 !important; color: gold !important;
+            border: 1px solid gold !important; border-radius: 10px !important;
+            font-weight: bold !important; width: 100%;
         }}
+        .stButton button:hover {{ background: gold !important; color: black !important; }}
 
-        .alert-style {{
-            background: rgba(255, 75, 75, 0.2);
-            border-left: 5px solid #ff4b4b;
-            padding: 15px;
-            text-align: center;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }}
-
-        .footer-amazon {{
-            background: white;
-            color: #232f3e;
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            margin-top: 50px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        .amazon-footer {{
+            background: white; color: #111; padding: 20px; border-radius: 20px;
+            text-align: center; margin-top: 50px; border-bottom: 5px solid #ff9900;
         }}
         </style>
+        <div class="atmosphere">
+            {" ".join([f'<div class="particle" style="left:{i*5}%; animation-delay:{i*0.2}s"></div>' for i in range(20)])}
+        </div>
     """, unsafe_allow_html=True)
 
-# --- Layout ---
-h_col1, h_col2 = st.columns([9, 1])
-with h_col1:
-    st.markdown(f"<h1 style='color: white; font-family: sans-serif;'>{T['title']}</h1>", unsafe_allow_html=True)
-with h_col2:
+# --- UI Structure ---
+h1, h2 = st.columns([9, 1])
+with h1: st.title(T["title"])
+with h2: 
     if st.button("🌐"):
         st.session_state.lang = "AR" if st.session_state.lang == "EN" else "EN"
         st.rerun()
 
-# Search Box
 query = st.text_input("📍", placeholder=T["search_place"])
-
-# Fixed Analyze Button
-b_col1, b_col2, b_col3 = st.columns([1, 1.5, 1])
-with b_col2:
-    analyze_click = st.button(T["btn_analyze"])
+b1, b2, b3 = st.columns([1, 1.5, 1])
+with b2: analyze = st.button(T["btn_analyze"])
 
 if query:
     lat, lon, name = get_coordinates(query, st.session_state.lang)
     if lat:
-        forecast = get_forecast(lat, lon)
-        if forecast:
-            curr = forecast['list'][0]
+        f = get_forecast(lat, lon)
+        if f:
+            curr = f['list'][0]
             cond, temp = curr['weather'][0]['main'].lower(), curr['main']['temp']
-            apply_custom_style(cond, temp)
+            apply_elden_style(cond, temp)
             
-            # Rain Alert
-            will_rain = any("rain" in f['weather'][0]['main'].lower() for f in forecast['list'][:8])
-            if will_rain:
-                st.markdown(f'<div class="alert-style">{T["alert_rain"]}</div>', unsafe_allow_html=True)
+            if any("rain" in x['weather'][0]['main'].lower() for x in f['list'][:8]):
+                st.warning(T["alert_rain"])
             
             st.markdown(f"<h2 style='text-align:center;'>{name}</h2>", unsafe_allow_html=True)
-            
-            # Metrics
             m1, m2, m3, m4 = st.columns(4)
             m1.metric(T["temp"], f"{temp}°C")
             m2.metric(T["clouds"], f"{curr['clouds']['all']}%")
             m3.metric(T["wind"], f"{curr['wind']['speed']} m/s")
             m4.metric(T["humidity"], f"{curr['main']['humidity']}%")
 
-            if analyze_click:
-                st.markdown("<br>", unsafe_allow_html=True)
+            if analyze:
                 st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=12)
 
-            # Footer
-            p_cat = "umbrella" if will_rain else "sunglasses" if temp > 28 else "winter+jacket"
-            st.markdown(f"<p style='text-align:center; opacity:0.5; margin-top:50px;'>Created by: Abdallah Nabil | 2026</p>", unsafe_allow_html=True)
-            st.markdown(f"""<div class="footer-amazon">
+            # Footer Amazon
+            p_cat = "umbrella" if "rain" in cond else "winter+jacket" if temp < 15 else "sunglasses"
+            st.markdown(f"<p style='text-align:center; opacity:0.3; margin-top:50px;'>Created by: Abdallah Nabil | 2026</p>", unsafe_allow_html=True)
+            st.markdown(f"""<div class="amazon-footer">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="70"><br>
                 <a href="https://www.amazon.eg/s?k={p_cat}&tag={AFFILIATE_ID}" target="_blank" style="text-decoration:none; color:#0066c0; font-weight:bold;">{T['shop']}</a>
             </div>""", unsafe_allow_html=True)
-    else:
-        st.error("Location not found.")
+    else: st.error("Location not found.")
 else:
-    apply_custom_style("clear", 25)
-    if analyze_click:
-        st.warning(T["warn_search"])
+    apply_elden_style("clear", 25)
