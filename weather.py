@@ -35,7 +35,7 @@ T = texts[st.session_state.lang]
 def get_global_coords(city_query):
     try:
         url = f"https://nominatim.openstreetmap.org/search?q={city_query}&format=json&limit=1"
-        res = requests.get(url, headers={'User-Agent': 'WeatherPro_Alert_System'}).json()
+        res = requests.get(url, headers={'User-Agent': 'WeatherPro_Ultimate'}).json()
         if res: return float(res[0]['lat']), float(res[0]['lon'])
         return None, None
     except: return None, None
@@ -47,38 +47,24 @@ def get_weather_data(lat, lon):
         return requests.get(url).json()
     except: return None
 
-# --- نظام التنبيهات الجوية الذكي ---
+# --- نظام التنبيهات الجوية ---
 def show_weather_alerts(data):
-    condition = data['weather'][0]['main'].lower()
-    description = data['weather'][0]['description'].lower()
     wind_speed = data['wind']['speed']
     temp = data['main']['temp']
-    
+    desc = data['weather'][0]['main'].lower()
     alert_msg = ""
     
-    # 1. تنبيه الرياح والأتربة
     if wind_speed > 10:
-        alert_msg = "رياح قوية جداً! انتبه من الأتربة العالقة وتساقط الأشياء." if st.session_state.lang == "AR" else "High wind speeds! Watch out for dust and falling objects."
+        alert_msg = "رياح قوية! انتبه من الأتربة العالقة." if st.session_state.lang == "AR" else "High winds! Watch out for dust."
+    elif "rain" in desc or "thunderstorm" in desc:
+        alert_msg = "أمطار غزيرة! يرجى الحذر أثناء القيادة." if st.session_state.lang == "AR" else "Heavy rain! Drive with caution."
+    elif temp > 38:
+        alert_msg = "حرارة مفرطة! اشرب الكثير من الماء." if st.session_state.lang == "AR" else "Extreme Heat! Stay hydrated."
     
-    # 2. تنبيه الأمطار والسيول
-    if "rain" in condition or "thunderstorm" in condition:
-        alert_msg = "هطول أمطار! يرجى توخي الحذر أثناء القيادة وتجنب ملامسة أعمدة الإنارة." if st.session_state.lang == "AR" else "Rainy weather! Drive carefully and avoid electric poles."
-    
-    # 3. تنبيه الحرارة المفرطة
-    if temp > 38:
-        alert_msg = "حرارة مفرطة! تجنب التعرض المباشر للشمس واشرب كميات كافية من المياه." if st.session_state.lang == "AR" else "Extreme Heat! Stay hydrated and avoid direct sunlight."
-    
-    # 4. تنبيه الضباب (انعدام الرؤية)
-    if "mist" in condition or "fog" in condition:
-        alert_msg = "ضباب كثيف! انخفاض في مستوى الرؤية الأفقية، قد ببطء." if st.session_state.lang == "AR" else "Dense fog! Low visibility, please drive slowly."
-
     if alert_msg:
-        st.markdown(f"""
-            <div style="background: rgba(255, 75, 75, 0.2); border: 2px solid #ff4b4b; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 25px; backdrop-filter: blur(10px);">
-                <span style="color: #ff4b4b; font-weight: bold; font-size: 1.2rem;">{T['alert_title']}</span>
-                <p style="color: white; margin: 5px 0 0 0; font-size: 1.1rem;">{alert_msg}</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div style="background: rgba(255, 75, 75, 0.2); border: 2px solid #ff4b4b; padding: 15px; border-radius: 15px; text-align: center; margin-bottom: 20px; backdrop-filter: blur(10px);">
+            <span style="color: #ff4b4b; font-weight: bold;">{T['alert_title']}</span> <span style="color: white;">{alert_msg}</span>
+        </div>""", unsafe_allow_html=True)
 
 # --- محرك الجرافيكس الدائم ---
 def apply_visuals(condition, temp):
@@ -89,8 +75,7 @@ def apply_visuals(condition, temp):
     else: p_color, p_w, p_h, p_speed, p_count = "#94a3b8", "3px", "3px", "7s", 30
 
     particles = "".join([f'<div class="particle" style="left:{random.randint(0, 100)}%; animation-delay:-{random.uniform(0, 10)}s;"></div>' for i in range(p_count)])
-    st.markdown(f"""
-        <style>
+    st.markdown(f"""<style>
         .stApp {{ background: transparent !important; }}
         .bg {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: radial-gradient(circle at center, #1a1a1c 0%, #000 100%); z-index: -1; overflow: hidden; }}
         .particle {{ position: absolute; background: {p_color}; width: {p_w}; height: {p_h}; opacity: 0.4; border-radius: {"50%" if "rain" not in condition else "0%"}; filter: {"blur(50px)" if "clear" in condition else "none"}; animation: fall {p_speed} linear infinite; }}
@@ -99,18 +84,24 @@ def apply_visuals(condition, temp):
         .stTextInput input {{ background: white !important; color: #111 !important; border-radius: 12px !important; text-align: center; border: 3px solid {p_color}; font-weight: bold; }}
         [data-testid="stMetric"] {{ background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(15px); border-radius: 20px !important; padding: 20px !important; display: flex !important; flex-direction: column !important; align-items: center !important; }}
         [data-testid="stMetricValue"] {{ color: {p_color if "clear" not in condition else "#ffeb3b"} !important; font-size: 2.2rem !important; text-align: center !important; }}
+        .stButton {{ display: flex; justify-content: center; }}
+        .stButton button {{ background: {p_color if "clear" not in condition else "#ff9900"} !important; color: #000 !important; font-weight: bold !important; border-radius: 10px !important; padding: 10px 40px !important; }}
         h1, h2 {{ text-align: center !important; color: white !important; }}
-        </style><div class="bg">{particles}</div>
-    """, unsafe_allow_html=True)
+        </style><div class="bg">{particles}</div>""", unsafe_allow_html=True)
 
 # --- واجهة المستخدم ---
 st.markdown(f"<h1>{T['title']}</h1>", unsafe_allow_html=True)
+
 c1, c2, c3 = st.columns([4.5, 1, 4.5])
 with c2:
     if st.button("🌐 AR/EN", use_container_width=True):
         st.session_state.lang = "AR" if st.session_state.lang == "EN" else "EN"; st.rerun()
 
 query = st.text_input("📍", placeholder=T["search_place"], label_visibility="collapsed")
+
+# زرار التفاصيل والخريطة الموسط
+bc1, bc2, bc3 = st.columns([1, 1.2, 1])
+with bc2: analyze_click = st.button(T["btn_analyze"], use_container_width=True)
 
 if query:
     lat, lon = get_global_coords(query)
@@ -120,8 +111,7 @@ if query:
             apply_visuals(data['weather'][0]['main'], data['main']['temp'])
             st.markdown(f"<h2>{query.title()}</h2>", unsafe_allow_html=True)
             
-            # --- استدعاء نظام التنبيهات هنا ---
-            show_weather_alerts(data)
+            show_weather_alerts(data) # عرض التنبيهات
             
             m1, m2, m3, m4 = st.columns(4)
             m1.metric(T["temp"], f"{data['main']['temp']}°C")
@@ -129,6 +119,13 @@ if query:
             m3.metric(T["wind"], f"{data['wind']['speed']} m/s")
             m4.metric(T["humidity"], f"{data['main']['humidity']}%")
             
-            st.markdown(f'<div style="background:white; padding:15px; border-radius:20px; text-align:center; margin:30px auto; max-width:400px;"><a href="https://www.amazon.eg/s?k=weather+safety&tag={AFFILIATE_ID}" target="_blank" style="color:#0066c0; font-weight:bold; text-decoration:none;">{T["shop"]}</a></div>', unsafe_allow_html=True)
+            # عرض الخريطة عند الضغط على الزرار
+            if analyze_click:
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=12)
+
+            st.markdown(f'<div style="background:white; padding:15px; border-radius:20px; text-align:center; margin:30px auto; max-width:400px;"><a href="https://www.amazon.eg/s?k=weather&tag={AFFILIATE_ID}" target="_blank" style="color:#0066c0; font-weight:bold; text-decoration:none;">{T["shop"]}</a></div>', unsafe_allow_html=True)
     else: st.error("Location not found.")
 else: apply_visuals("clear", 25)
+
+st.markdown(f"<p style='text-align:center; opacity:0.3; margin-top:50px;'>Created by: Abdallah Nabil | 2026</p>", unsafe_allow_html=True)
