@@ -4,7 +4,7 @@ import pandas as pd
 from streamlit_lottie import st_lottie
 from deep_translator import GoogleTranslator
 
-# 1. إعدادات الصفحة - حافظنا على الـ Layout الأصلي
+# 1. إعدادات الصفحة الأصلية
 st.set_page_config(page_title="Weather Pro Max", page_icon="🌤️", layout="wide", initial_sidebar_state="collapsed")
 
 # استدعاء الأسرار
@@ -13,19 +13,20 @@ TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
 AFFILIATE_ID = "abdallah2026-21"
 
-# قائمة الاقتراحات اللي طلبتها (بتظهر وأنت بتكتب)
-SUGGESTED_CITIES = ["Cairo", "Alexandria", "Giza", "Aswan", "Luxor", "Sharm El Sheikh", "Hurghada", "Mansoura", "Tanta", "Dubai", "London", "Paris"]
-
-# تحسين السرعة باستخدام الـ Caching
+# دالة لجلب البيانات تدعم أي مكان في العالم (عالمي)
 @st.cache_data(ttl=600)
 def get_weather_data(city_name):
     try:
-        # ميزة البحث بالعربي: الترجمة التلقائية
+        # الميزة الذكية: ترجمة أي اسم (مدينة، قرية، إقليم) للإنجليزية لضمان قبول السيرفر
         translated = GoogleTranslator(source='auto', target='en').translate(city_name)
+        # البحث باستخدام اسم المدينة المترجم
         url = f"http://api.openweathermap.org/data/2.5/weather?q={translated}&appid={API_KEY}&units=metric"
-        r = requests.get(url, timeout=5) # قللت الـ timeout لزيادة السرعة
-        return r.json() if r.status_code == 200 else None
-    except: return None
+        r = requests.get(url, timeout=5)
+        if r.status_code == 200:
+            return r.json()
+        return None
+    except:
+        return None
 
 def load_lottieurl(url: str):
     try: return requests.get(url).json()
@@ -37,7 +38,7 @@ def notify_me(msg):
         requests.post(url, data={"chat_id": TELEGRAM_CHAT_ID, "text": msg}, timeout=2)
     except: pass
 
-# --- الـ CSS الأصلي (الخلفية الزرقاء والشريط وكل شيء كما هو) ---
+# --- التنسيق (CSS) الأصلي المحبب لديك ---
 st.markdown(f"""
     <style>
     [data-testid="stSidebar"] {{ display: none; }}
@@ -70,75 +71,68 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# 1. الشريط المتحرك (Ticker) - موجود
-st.markdown('<div class="ticker-wrap"><div class="ticker">🚀 تحديثات 2026: دعم البحث باللغة العربية | ميزة الاقتراحات الذكية مفعلة | تسوق الآن حسب حالة الطقس 🌤️</div></div>', unsafe_allow_html=True)
+# شريط التنبيهات
+st.markdown('<div class="ticker-wrap"><div class="ticker">🌍 نظام التتبع العالمي مفعل: يمكنك الآن البحث عن أي مدينة، قرية، أو نجوع في أي مكان بالعالم بالعربي أو الإنجليزي 🌤️</div></div>', unsafe_allow_html=True)
 
-st.title("🌤️ Weather Pro Max Dashboard")
+st.title("🌤️ Weather Pro Max Global")
 
-# 2. ميزة البحث بالعربي والاقتراحات (Autocomplete)
-city_input = st.selectbox("Search or Select City (Arabic/English):", options=SUGGESTED_CITIES, index=1)
-custom_city = st.text_input("Or Type Any City Name:")
+# خانة بحث ذكية مفتوحة (بدون تقييد بمدن معينة)
+city_query = st.text_input("📍 اكتب اسم المدينة أو المركز أو القرية (عربي/English):", placeholder="مثال: شبين الكوم، برج العرب، دبي، لندن...")
 
-final_city = custom_city if custom_city else city_input
-
-weather_data = get_weather_data(final_city)
-
-if weather_data:
-    main_cond = weather_data['weather'][0]['main'].lower()
-    temp = weather_data['main']['temp']
+if city_query:
+    weather_data = get_weather_data(city_query)
     
-    # تحديد روابط أمازون - موجودة
-    if "rain" in main_cond:
-        ad_text = "☔ الدنيا بتمطر؟ الحق عروض الشماسي والملابس المضادة للمطر بخصم خاص!"
-        p_link = f"https://www.amazon.eg/s?k=umbrella&tag={AFFILIATE_ID}"
-    elif temp > 25:
-        ad_text = "🕶️ الجو شمس؟ احمي عينك بأفضل نظارات الشمس الأصلية من أمازون!"
-        p_link = f"https://www.amazon.eg/s?k=sunglasses&tag={AFFILIATE_ID}"
-    elif temp < 15:
-        ad_text = "🧥 الجو برد؟ شوف كولكشن الملابس الشتوية والدفايات الجديد!"
-        p_link = f"https://www.amazon.eg/s?k=winter+clothes&tag={AFFILIATE_ID}"
-    else:
-        ad_text = "🎒 الجو رايق! شوف أحدث عروض شنط الظهر والرحلات المريحة!"
-        p_link = f"https://www.amazon.eg/s?k=backpacks&tag={AFFILIATE_ID}"
+    if weather_data:
+        main_cond = weather_data['weather'][0]['main'].lower()
+        temp = weather_data['main']['temp']
+        city_full_name = weather_data['name'] # الاسم الرسمي من السيرفر
+        country_code = weather_data['sys']['country']
 
-    # الأنميشن - موجود
-    anim_urls = {"rain": "https://lottie.host/9331e84a-c0b9-4f7d-815d-ed0f48866380/vGvFjPqXWp.json",
-                 "clear": "https://lottie.host/a8a5b293-61a7-47b8-80f2-b892a4066c0d/Y08T7N1p5N.json",
-                 "clouds": "https://lottie.host/17e23118-2e0f-48e0-a435-081831412d2b/qQ0JmX24jC.json",
-                 "default": "https://lottie.host/a06d87f7-f823-4556-9a5d-b4b609c2a265/gQz099j54N.json"}
-    
-    anim_json = load_lottieurl(anim_urls.get(main_cond if main_cond in anim_urls else "default"))
-    if anim_json: st_lottie(anim_json, height=250, key="main_anim")
+        # تحديد الروابط
+        if "rain" in main_cond:
+            ad_text, p_search = "☔ الدنيا بتمطر؟ الحق عروض الشماسي والملابس المضادة للمطر بخصم خاص!", "umbrella"
+        elif temp > 25:
+            ad_text, p_search = "🕶️ الجو شمس؟ احمي عينك بأفضل نظارات الشمس الأصلية من أمازون!", "sunglasses"
+        elif temp < 15:
+            ad_text, p_search = "🧥 الجو برد؟ شوف كولكشن الملابس الشتوية والدفايات الجديد!", "winter+clothes"
+        else:
+            ad_text, p_search = "🎒 الجو رايق! شوف أحدث عروض شنط الظهر والرحلات المريحة!", "backpacks"
 
-    # زر التقرير والبيانات (الـ 4 مقاييس والخريطة) - موجودة بالكامل
-    if st.button("Analysis Details"):
-        notify_me(f"💰 بحث عن {final_city} | {temp}°C")
-        st.markdown("---")
-        
+        p_link = f"https://www.amazon.eg/s?k={p_search}&tag={AFFILIATE_ID}"
+
+        # الأنميشن
+        anim_urls = {"rain": "https://lottie.host/9331e84a-c0b9-4f7d-815d-ed0f48866380/vGvFjPqXWp.json",
+                     "clear": "https://lottie.host/a8a5b293-61a7-47b8-80f2-b892a4066c0d/Y08T7N1p5N.json",
+                     "clouds": "https://lottie.host/17e23118-2e0f-48e0-a435-081831412d2b/qQ0JmX24jC.json",
+                     "default": "https://lottie.host/a06d87f7-f823-4556-9a5d-b4b609c2a265/gQz099j54N.json"}
+        anim_json = load_lottieurl(anim_urls.get(main_cond if main_cond in anim_urls else "default"))
+        if anim_json: st_lottie(anim_json, height=220, key="main_anim")
+
+        st.subheader(f"📍 {city_full_name}, {country_code}")
+
+        # عرض المقاييس الـ 4 الأصلية
         c1, c2 = st.columns(2)
         c1.metric("Temperature", f"{temp} °C")
-        c2.metric("Rain/Clouds", f"{weather_data['clouds']['all']}%")
+        c2.metric("Clouds", f"{weather_data['clouds']['all']}%")
         
         c3, c4 = st.columns(2)
         c3.metric("Wind Speed", f"{weather_data['wind']['speed']} m/s")
         c4.metric("Humidity", f"{weather_data['main']['humidity']}%")
-        
-        st.markdown("---")
-        st.map(pd.DataFrame({'lat': [weather_data['coord']['lat']], 'lon': [weather_data['coord']['lon']]}))
-        
-        icon_code = weather_data['weather'][0]['icon']
-        st.image(f"http://openweathermap.org/img/wn/{icon_code}@4x.png", width=80)
 
-    # إعلان أمازون الذكي - موجود
-    st.markdown(f"""
-        <div class="amazon-ad-box">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="90"><br>
-            <p style="margin: 10px 0; font-size: 1.1rem;">{ad_text}</p>
-            <a href="{p_link}" target="_blank" class="ad-button">اطلب الآن بخصم خاص 🛒</a>
-        </div>
-    """, unsafe_allow_html=True)
+        if st.button("Explore Local Map & Analysis"):
+            notify_me(f"💰 بحث عالمي عن: {city_full_name} | {temp}°C")
+            st.map(pd.DataFrame({'lat': [weather_data['coord']['lat']], 'lon': [weather_data['coord']['lon']]}))
+            st.image(f"http://openweathermap.org/img/wn/{weather_data['weather'][0]['icon']}@4x.png", width=80)
 
-else:
-    st.warning("Please enter a valid city name.")
+        # إعلان أمازون
+        st.markdown(f"""
+            <div class="amazon-ad-box">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" width="90"><br>
+                <p style="margin: 10px 0; font-size: 1.1rem;">{ad_text}</p>
+                <a href="{p_link}" target="_blank" class="ad-button">اطلب الآن بخصم خاص 🛒</a>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.error("❌ تعذر العثور على هذا المكان. تأكد من كتابة الاسم بشكل صحيح.")
 
 st.markdown("<br><center style='opacity:0.7;'>Created by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
