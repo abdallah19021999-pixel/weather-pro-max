@@ -13,17 +13,28 @@ TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
 AFFILIATE_ID = "abdallah2026-21"
 
-# دالة لجلب البيانات تدعم أي مكان في العالم (عالمي)
+# دالة جلب البيانات المطورة (الذكاء الجغرافي)
 @st.cache_data(ttl=600)
 def get_weather_data(city_name):
     try:
-        # الميزة الذكية: ترجمة أي اسم (مدينة، قرية، إقليم) للإنجليزية لضمان قبول السيرفر
+        # ترجمة الاسم للإنجليزية
         translated = GoogleTranslator(source='auto', target='en').translate(city_name)
-        # البحث باستخدام اسم المدينة المترجم
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={translated}&appid={API_KEY}&units=metric"
-        r = requests.get(url, timeout=5)
+        
+        # محاولة البحث بدقة داخل مصر أولاً (للمراكز والقرى)
+        search_query_eg = f"{translated}, Egypt"
+        url_eg = f"http://api.openweathermap.org/data/2.5/weather?q={search_query_eg}&appid={API_KEY}&units=metric"
+        r = requests.get(url_eg, timeout=5)
+        
         if r.status_code == 200:
             return r.json()
+        
+        # إذا لم يجد نتيجة في مصر، يبحث في العالم كله (للمدن العالمية)
+        url_global = f"http://api.openweathermap.org/data/2.5/weather?q={translated}&appid={API_KEY}&units=metric"
+        r_global = requests.get(url_global, timeout=5)
+        
+        if r_global.status_code == 200:
+            return r_global.json()
+            
         return None
     except:
         return None
@@ -72,12 +83,12 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # شريط التنبيهات
-st.markdown('<div class="ticker-wrap"><div class="ticker">🌍 نظام التتبع العالمي مفعل: يمكنك الآن البحث عن أي مدينة، قرية، أو نجوع في أي مكان بالعالم بالعربي أو الإنجليزي 🌤️</div></div>', unsafe_allow_html=True)
+st.markdown('<div class="ticker-wrap"><div class="ticker">🌍 نظام التتبع الجغرافي المطور: الآن يمكنك البحث عن أي قرية أو نجع بدقة عالية داخل وخارج مصر 🌤️</div></div>', unsafe_allow_html=True)
 
 st.title("🌤️ Weather Pro Max Global")
 
-# خانة بحث ذكية مفتوحة (بدون تقييد بمدن معينة)
-city_query = st.text_input("📍 اكتب اسم المدينة أو المركز أو القرية (عربي/English):", placeholder="مثال: شبين الكوم، برج العرب، دبي، لندن...")
+# خانة بحث مفتوحة وذكية
+city_query = st.text_input("📍 ابحث عن أي مكان في العالم (قرية، مدينة، إقليم):", placeholder="مثال: برج العرب، الحامول، دبي، باريس...")
 
 if city_query:
     weather_data = get_weather_data(city_query)
@@ -85,10 +96,10 @@ if city_query:
     if weather_data:
         main_cond = weather_data['weather'][0]['main'].lower()
         temp = weather_data['main']['temp']
-        city_full_name = weather_data['name'] # الاسم الرسمي من السيرفر
+        city_full_name = weather_data['name']
         country_code = weather_data['sys']['country']
 
-        # تحديد الروابط
+        # تحديد الروابط الذكية
         if "rain" in main_cond:
             ad_text, p_search = "☔ الدنيا بتمطر؟ الحق عروض الشماسي والملابس المضادة للمطر بخصم خاص!", "umbrella"
         elif temp > 25:
@@ -120,7 +131,8 @@ if city_query:
         c4.metric("Humidity", f"{weather_data['main']['humidity']}%")
 
         if st.button("Explore Local Map & Analysis"):
-            notify_me(f"💰 بحث عالمي عن: {city_full_name} | {temp}°C")
+            notify_me(f"💰 بحث عن مكان: {city_full_name} | {temp}°C")
+            st.markdown("---")
             st.map(pd.DataFrame({'lat': [weather_data['coord']['lat']], 'lon': [weather_data['coord']['lon']]}))
             st.image(f"http://openweathermap.org/img/wn/{weather_data['weather'][0]['icon']}@4x.png", width=80)
 
@@ -133,6 +145,6 @@ if city_query:
             </div>
         """, unsafe_allow_html=True)
     else:
-        st.error("❌ تعذر العثور على هذا المكان. تأكد من كتابة الاسم بشكل صحيح.")
+        st.error("❌ لم نجد هذا المكان. جرب كتابة اسم المدينة والمحافظة (مثلاً: بيلا، كفر الشيخ).")
 
 st.markdown("<br><center style='opacity:0.7;'>Created by: Abdallah Nabil | 2026</center>", unsafe_allow_html=True)
