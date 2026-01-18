@@ -34,22 +34,14 @@ texts = {
 }
 T = texts[st.session_state.lang]
 
-# --- محرك البحث الاحترافي (Direct OpenWeather Geocoding) ---
+# --- محرك البحث الاحترافي ---
 @st.cache_data(ttl=3600)
 def search_city(query):
     try:
-        # الطريقة دي هي الأضمن للموبايل ولأي مكان في العالم
         geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=1&appid={API_KEY}"
         res = requests.get(geo_url).json()
         if res:
             return res[0]['lat'], res[0]['lon'], res[0]['name']
-        
-        # محرك احتياطي لو البحث المباشر لم ينجح
-        url_alt = f"https://api.openweathermap.org/data/2.5/weather?q={query}&appid={API_KEY}"
-        res_alt = requests.get(url_alt).json()
-        if res_alt.get("cod") == 200:
-            return res_alt['coord']['lat'], res_alt['coord']['lon'], res_alt['name']
-            
         return None, None, None
     except:
         return None, None, None
@@ -61,7 +53,7 @@ def get_weather(lat, lon):
         return requests.get(url).json()
     except: return None
 
-# --- الجرافيكس والتنبيهات ---
+# --- الجرافيكس والتنبيهات وإخفاء عناصر Streamlit ---
 def apply_ui(cond, temp, data):
     cond = cond.lower()
     if "rain" in cond: p_color, p_speed = "#4facfe", "0.8s"
@@ -71,7 +63,6 @@ def apply_ui(cond, temp, data):
 
     particles = "".join([f'<div class="particle" style="left:{random.randint(0, 100)}%; animation-delay:-{random.uniform(0, 10)}s;"></div>' for i in range(50)])
     
-    # رسالة التنبيه
     alert_html = ""
     if data['wind']['speed'] > 10 or "rain" in cond or temp > 38:
         msg = "انتبه من تقلبات الجو!" if st.session_state.lang == "AR" else "Watch out for weather changes!"
@@ -79,6 +70,13 @@ def apply_ui(cond, temp, data):
 
     st.markdown(f"""
         <style>
+        /* إخفاء عناصر ستريم ليت الإفتراضية */
+        #MainMenu {{visibility: hidden;}}
+        footer {{visibility: hidden;}}
+        header {{visibility: hidden;}}
+        [data-testid="stStatusWidget"] {{display: none;}}
+        .block-container {{padding-top: 1rem; padding-bottom: 0rem;}}
+
         .stApp {{ background: transparent !important; }}
         .bg {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: radial-gradient(circle at center, #1a1a1c 0%, #000 100%); z-index: -1; overflow: hidden; }}
         .particle {{ position: absolute; background: {p_color}; width: 2px; height: 20px; opacity: 0.4; animation: fall {p_speed} linear infinite; }}
@@ -97,14 +95,16 @@ def apply_ui(cond, temp, data):
 # --- التنفيذ ---
 st.markdown(f"<h1>{T['title']}</h1>", unsafe_allow_html=True)
 
-# زر اللغة بـ Key فريد جداً
-if st.button("🌐 AR/EN", key="unique_lang_btn"):
-    st.session_state.lang = "AR" if st.session_state.lang == "EN" else "EN"
-    st.rerun()
+# زر اللغة
+c1, c2, c3 = st.columns([1, 0.5, 1])
+with c2:
+    if st.button("🌐 AR/EN", key="unique_lang_btn"):
+        st.session_state.lang = "AR" if st.session_state.lang == "EN" else "EN"
+        st.rerun()
 
 query = st.text_input("📍", placeholder=T["search_place"], key="unique_search_input", label_visibility="collapsed")
 
-# زر التحليل بـ Key فريد جداً
+# زر التحليل
 analyze_btn = st.button(T["btn_analyze"], key="unique_analyze_btn")
 
 if query:
@@ -129,8 +129,9 @@ if query:
     else:
         st.error("City not found. Please try another name.")
 else:
-    # خلفية افتراضية
+    # خلفية افتراضية مع إخفاء العناصر أيضاً
+    st.markdown('<style>#MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}</style>', unsafe_allow_html=True)
     particles = "".join([f'<div class="particle" style="left:{random.randint(0, 100)}%; animation-delay:-{random.uniform(0, 10)}s;"></div>' for i in range(30)])
-    st.markdown(f'<style>.stApp {{ background: transparent !important; }} .bg {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: -1; }} .particle {{ position: absolute; background: #555; width: 1px; height: 10px; animation: fall 10s linear infinite; }} @keyframes fall {{ 0% {{ translateY(-10vh); }} 100% {{ translateY(110vh); }} }} </style><div class="bg">{particles}</div>', unsafe_allow_html=True)
+    st.markdown(f'<style>.stApp {{ background: transparent !important; }} .bg {{ position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: -1; }} .particle {{ position: absolute; background: #555; width: 1px; height: 10px; animation: fall 10s linear infinite; }} @keyframes fall {{ 0% {{ transform: translateY(-10vh); }} 100% {{ transform: translateY(110vh); }} }} </style><div class="bg">{particles}</div>', unsafe_allow_html=True)
 
 st.markdown(f"<p style='text-align:center; opacity:0.3; margin-top:50px;'>Abdallah Nabil | 2026</p>", unsafe_allow_html=True)
