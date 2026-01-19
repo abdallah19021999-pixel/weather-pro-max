@@ -6,7 +6,7 @@ from datetime import datetime
 # 1. إعدادات الصفحة الأساسية
 st.set_page_config(page_title="Weather Pro Max", page_icon="🌤️", layout="wide")
 
-# 2. جلب مفاتيح الربط من الـ Secrets (لا تغير الأسماء هنا، تأكد أنها مطابقة في Streamlit Secrets)
+# 2. جلب مفاتيح الربط من الـ Secrets
 API_KEY = st.secrets["OPENWEATHER_API_KEY"]
 TELEGRAM_TOKEN = st.secrets["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = st.secrets["TELEGRAM_CHAT_ID"]
@@ -67,9 +67,7 @@ def get_full_weather(query):
         geo = requests.get(f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=1&appid={API_KEY}").json()
         if geo:
             lat, lon, name = geo[0]['lat'], geo[0]['lon'], geo[0]['name']
-            # طقس حالي
             curr = requests.get(f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}&units=metric").json()
-            # توقعات (Forecast)
             fore = requests.get(f"https://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={API_KEY}&units=metric").json()
             return curr, fore, name, lat, lon
     except: return None, None, None, None, None
@@ -78,60 +76,42 @@ def get_full_weather(query):
 # --- تصميم الواجهة ---
 st.markdown(f"<h1 style='text-align:center; color:#0078ff;'>{T['title']}</h1>", unsafe_allow_html=True)
 
-# زر تغيير اللغة
 col_lang = st.columns([4, 1, 4])
 if col_lang[1].button("🌐 AR/EN"):
     st.session_state.lang = "AR" if st.session_state.lang == "EN" else "EN"
     st.rerun()
 
-# مربع البحث
 query = st.text_input("", placeholder=T["search"], label_visibility="collapsed")
 
 if query:
     curr, fore, name, lat, lon = get_full_weather(query)
-    
     if curr:
-        # إرسال تنبيه لتليجرام
-        send_telegram_alert(f"📍 بحث جديد عن مدينة: {name}")
-        
-        # 1. عرض التحذير (إن وجد)
+        send_telegram_alert(f"📍 بحث جديد: {name}")
         alert = get_alert(curr, st.session_state.lang)
         if alert:
             st.warning(alert)
-            
-        # 2. عرض البيانات الأساسية
         st.markdown(f"<h2 style='text-align:center;'>{name}</h2>", unsafe_allow_html=True)
         m1, m2, m3 = st.columns(3)
         m1.metric(T["temp"], f"{curr['main']['temp']}°C")
         m2.metric(T["wind"], f"{curr['wind']['speed']} m/s")
         m3.metric(T["humidity"], f"{curr['main']['humidity']}%")
-
         st.markdown("---")
-        
-        # 3. عرض توقعات الساعات القادمة
         st.subheader(T['hourly'])
         cols = st.columns(5)
         for i, item in enumerate(fore['list'][:5]):
             with cols[i]:
-                # تحويل الوقت من نظام Unix
                 time_hour = datetime.fromtimestamp(item['dt']).strftime('%H:%M')
                 st.markdown(f"**{time_hour}**")
                 st.write(f"{item['main']['temp']}°C")
                 st.caption(item['weather'][0]['description'])
-
         st.markdown("---")
-        
-        # 4. الخريطة التفاعلية
         st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=9)
-        
-        # 5. زر التسوق (أفلييت أمازون)
         st.markdown(f'''
             <div style="background:#ff9900; padding:20px; border-radius:15px; text-align:center; margin-top:20px;">
                 <a href="https://www.amazon.eg/s?k=weather&tag={AFFILIATE_ID}" target="_blank" style="color:black; font-weight:bold; text-decoration:none; font-size:20px;">{T["shop"]}</a>
             </div>
         ''', unsafe_allow_html=True)
     else:
-        st.error("City not found! Please check the name." if st.session_state.lang == "EN" else "لم يتم العثور على المدينة، تأكد من الاسم.")
+        st.error("City not found!" if st.session_state.lang == "EN" else "لم يتم العثور على المدينة.")
 
-# التذييل
-st.markdown("<br><hr><center>Abdallah Nabil | © 2026 Powerd by Amazon Store</center>", unsafe_allow_html=True)
+st.markdown("<br><hr><center>Abdallah Nabil | © 2026 Powered by Amazon Store</center>", unsafe_allow_html=True)
