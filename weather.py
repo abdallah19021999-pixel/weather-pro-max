@@ -54,7 +54,7 @@ texts = {
 T = texts[st.session_state.lang]
 
 # --- دوال البحث والطقس ---
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=600)
 def search_city(query):
     try:
         geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=1&appid={API_KEY}"
@@ -120,13 +120,32 @@ if query:
         if curr_data:
             apply_ui_final(curr_data['weather'][0]['main'], curr_data['main']['temp'])
             
-            # --- 1. نظام التحذير ---
-            condition = curr_data['weather'][0]['main'].lower()
-            if "rain" in condition:
-                st.warning("⚠️ ستمطر قريباً! خذ مظلتك" if st.session_state.lang == "AR" else "⚠️ Rain expected! Take an umbrella")
-            elif curr_data['main']['temp'] > 38:
-                st.error("🔥 حرارة شديدة! اشرب ماءً" if st.session_state.lang == "AR" else "🔥 Extreme Heat! Drink water")
-
+          # --- نسخة مطورة من دالة التحذير (Advanced Alerts) ---
+def get_advanced_alerts(data, lang):
+    temp = data['main']['temp']
+    wind = data['wind']['speed']
+    vis = data.get('visibility', 10000) # الرؤية بالأمتار
+    hum = data['main']['humidity']
+    condition = data['weather'][0]['main'].lower()
+    
+    alerts = []
+    
+    if "rain" in condition:
+        alerts.append("⚠️ ستمطر قريباً! خذ مظلتك" if lang == "AR" else "⚠️ Rain expected! Take an umbrella")
+    
+    if temp > 38:
+        alerts.append("🔥 حرارة شديدة! اشرب ماءً" if lang == "AR" else "🔥 Extreme Heat! Drink water")
+    
+    if wind > 12:
+        alerts.append("💨 رياح قوية! انتبه أثناء القيادة" if lang == "AR" else "💨 High Wind! Be careful driving")
+        
+    if vis < 2000: # أقل من 2 كم
+        alerts.append("🌫️ شبورة كثيفة! الرؤية ضعيفة" if lang == "AR" else "🌫️ Thick Fog! Low visibility")
+        
+    if hum > 90:
+        alerts.append("💦 رطوبة عالية جداً تخنق!" if lang == "AR" else "💦 Very High Humidity!")
+        
+    return alerts
             st.markdown(f"<h2>{name}</h2>", unsafe_allow_html=True)
             
             # --- 2. البيانات الحالية ---
@@ -165,3 +184,4 @@ else:
     apply_ui_final("clear", 25)
 
 st.markdown(f"<p style='text-align:center; opacity:0.3; margin-top:50px; color:white;'>Abdallah Nabil | 2026</p>", unsafe_allow_html=True)
+
