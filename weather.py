@@ -23,8 +23,9 @@ except:
 
 AFFILIATE_ID = "abdallah2026-21"
 
+# تعديل: جعل اللغة الافتراضية الإنجليزية
 if "lang" not in st.session_state:
-    st.session_state.lang = "AR"
+    st.session_state.lang = "EN"
 
 # --- دالة إرسال تنبيه للتليجرام ---
 def send_telegram_alert(message):
@@ -51,14 +52,23 @@ texts = {
 }
 T = texts[st.session_state.lang]
 
-# --- دوال البحث والطقس ---
+# --- دوال البحث والطقس (تعديل: نظام البحث الشامل) ---
 @st.cache_data(ttl=600)
 def search_city(query):
     try:
+        # الطريقة الأولى: البحث المباشر عن طريق اسم المدينة (الأشمل للمدن الصغيرة)
+        search_url = f"https://api.openweathermap.org/data/2.5/weather?q={query}&appid={API_KEY}"
+        res = requests.get(search_url).json()
+        if res.get("cod") == 200:
+            return (res['coord']['lat'], res['coord']['lon'], res['name'])
+        
+        # الطريقة الثانية: الجيوديكينج (احتياطية)
         geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=1&appid={API_KEY}"
-        res = requests.get(geo_url).json()
-        return (res[0]['lat'], res[0]['lon'], res[0]['name']) if res else (None, None, None)
-    except: return None, None, None
+        geo_res = requests.get(geo_url).json()
+        if geo_res:
+            return (geo_res[0]['lat'], geo_res[0]['lon'], geo_res[0]['name'])
+    except: pass
+    return None, None, None
 
 @st.cache_data(ttl=600)
 def get_weather_full(lat, lon):
@@ -120,20 +130,14 @@ if query:
             hum = curr_data['main']['humidity']
             
             alerts = []
-            # 1. أمطار وعواصف رعدية
             if "rain" in cond: alerts.append("⚠️ مطر متوقع! خذ مظلتك" if st.session_state.lang=="AR" else "⚠️ Rain expected! Take an umbrella")
             if "thunderstorm" in cond: alerts.append("⚡ عاصفة رعدية! ابقَ في الداخل" if st.session_state.lang=="AR" else "⚡ Thunderstorm! Stay indoors")
-            # 2. ثلوج
             if "snow" in cond: alerts.append("❄️ تساقط ثلوج! الجو شديد البرودة" if st.session_state.lang=="AR" else "❄️ Snowing! It's freezing")
-            # 3. حرارة وبرودة شديدة
             if temp > 38: alerts.append("🔥 حرارة شديدة! اشرب ماءً" if st.session_state.lang=="AR" else "🔥 Extreme Heat! Drink water")
             if temp < 5: alerts.append("🥶 برد قارص! ارتِدِ ملابس ثقيلة" if st.session_state.lang=="AR" else "🥶 Very Cold! Wear heavy clothes")
-            # 4. رياح وأعاصير
             if wind > 12: alerts.append("💨 رياح قوية! انتبه أثناء القيادة" if st.session_state.lang=="AR" else "💨 High Wind! Drive carefully")
             if "tornado" in cond or "squall" in cond: alerts.append("🌪️ تحذير من إعصار أو عاصفة شديدة!" if st.session_state.lang=="AR" else "🌪️ Tornado / Squall Warning!")
-            # 5. شبورة ورؤية
             if vis < 2000: alerts.append("🌫️ شبورة كثيفة! الرؤية ضعيفة" if st.session_state.lang=="AR" else "🌫️ Thick Fog! Low visibility")
-            # 6. رطوبة
             if hum > 90: alerts.append("💦 رطوبة عالية جداً تخنق" if st.session_state.lang=="AR" else "💦 Very High Humidity")
 
             for alert in alerts:
