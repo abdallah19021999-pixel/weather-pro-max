@@ -23,7 +23,7 @@ except:
 
 AFFILIATE_ID = "abdallah2026-21"
 
-# تعديل: جعل اللغة الافتراضية الإنجليزية
+# جعل اللغة الافتراضية الإنجليزية عند الفتح
 if "lang" not in st.session_state:
     st.session_state.lang = "EN"
 
@@ -52,17 +52,20 @@ texts = {
 }
 T = texts[st.session_state.lang]
 
-# --- دوال البحث والطقس (تعديل: نظام البحث الشامل) ---
+# --- دالة البحث الذكية (تعديل: نظام البحث الذي يعطي أولوية لمصر) ---
 @st.cache_data(ttl=600)
 def search_city(query):
     try:
-        # الطريقة الأولى: البحث المباشر عن طريق اسم المدينة (الأشمل للمدن الصغيرة)
-        search_url = f"https://api.openweathermap.org/data/2.5/weather?q={query}&appid={API_KEY}"
+        # المحاولة الأولى: إضافة وسم مصر تلقائياً لضمان دقة البحث المحلي
+        # إذا كان المستخدم لم يحدد دولة بالفعل (عن طريق الفاصلة)
+        search_query = query if "," in query else f"{query}, EG"
+        search_url = f"https://api.openweathermap.org/data/2.5/weather?q={search_query}&appid={API_KEY}"
         res = requests.get(search_url).json()
+        
         if res.get("cod") == 200:
             return (res['coord']['lat'], res['coord']['lon'], res['name'])
         
-        # الطريقة الثانية: الجيوديكينج (احتياطية)
+        # المحاولة الثانية: البحث العالمي المفتوح في حال لم تكن في مصر
         geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=1&appid={API_KEY}"
         geo_res = requests.get(geo_url).json()
         if geo_res:
