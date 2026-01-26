@@ -23,7 +23,6 @@ except:
 
 AFFILIATE_ID = "abdallah2026-21"
 
-# جعل اللغة الافتراضية الإنجليزية عند الفتح
 if "lang" not in st.session_state:
     st.session_state.lang = "EN"
 
@@ -52,20 +51,15 @@ texts = {
 }
 T = texts[st.session_state.lang]
 
-# --- دالة البحث الذكية (تعديل: نظام البحث الذي يعطي أولوية لمصر) ---
+# --- دالة البحث الذكية ---
 @st.cache_data(ttl=600)
 def search_city(query):
     try:
-        # المحاولة الأولى: إضافة وسم مصر تلقائياً لضمان دقة البحث المحلي
-        # إذا كان المستخدم لم يحدد دولة بالفعل (عن طريق الفاصلة)
         search_query = query if "," in query else f"{query}, EG"
         search_url = f"https://api.openweathermap.org/data/2.5/weather?q={search_query}&appid={API_KEY}"
         res = requests.get(search_url).json()
-        
         if res.get("cod") == 200:
             return (res['coord']['lat'], res['coord']['lon'], res['name'])
-        
-        # المحاولة الثانية: البحث العالمي المفتوح في حال لم تكن في مصر
         geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={query}&limit=1&appid={API_KEY}"
         geo_res = requests.get(geo_url).json()
         if geo_res:
@@ -81,7 +75,7 @@ def get_weather_full(lat, lon):
         return requests.get(curr_url).json(), requests.get(fore_url).json()
     except: return None, None
 
-# --- واجهة الـ CSS الأصلية ---
+# --- واجهة الـ CSS ---
 def apply_ui_final(cond, temp):
     cond = cond.lower()
     p_color = "#4facfe" if "rain" in cond else "#ffeb3b" if "clear" in cond else "#94a3b8"
@@ -102,6 +96,11 @@ def apply_ui_final(cond, temp):
         .forecast-box {{ background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }}
         </style>
         <div class="bg">{particles}</div>
+        <script>
+        if (Notification.permission !== "granted") {{
+            Notification.requestPermission();
+        }}
+        </script>
     """, unsafe_allow_html=True)
 
 # --- التنفيذ الرئيسي ---
@@ -125,37 +124,54 @@ if query:
         if curr_data:
             apply_ui_final(curr_data['weather'][0]['main'], curr_data['main']['temp'])
             
-            # --- نظام التحذيرات الشامل (All Weather Alerts) ---
-            cond = curr_data['weather'][0]['main'].lower()
+            # --- 🚀 نظام التحذيرات العالمي + إشعارات الدفع 🚀 ---
+            cond_main = curr_data['weather'][0]['main'].lower()
+            cond_desc = curr_data['weather'][0]['description'].lower()
             temp = curr_data['main']['temp']
             wind = curr_data['wind']['speed']
             vis = curr_data.get('visibility', 10000)
             hum = curr_data['main']['humidity']
             
             alerts = []
-            if "rain" in cond: alerts.append("⚠️ مطر متوقع! خذ مظلتك" if st.session_state.lang=="AR" else "⚠️ Rain expected! Take an umbrella")
-            if "thunderstorm" in cond: alerts.append("⚡ عاصفة رعدية! ابقَ في الداخل" if st.session_state.lang=="AR" else "⚡ Thunderstorm! Stay indoors")
-            if "snow" in cond: alerts.append("❄️ تساقط ثلوج! الجو شديد البرودة" if st.session_state.lang=="AR" else "❄️ Snowing! It's freezing")
-            if temp > 38: alerts.append("🔥 حرارة شديدة! اشرب ماءً" if st.session_state.lang=="AR" else "🔥 Extreme Heat! Drink water")
-            if temp < 5: alerts.append("🥶 برد قارص! ارتِدِ ملابس ثقيلة" if st.session_state.lang=="AR" else "🥶 Very Cold! Wear heavy clothes")
-            if wind > 12: alerts.append("💨 رياح قوية! انتبه أثناء القيادة" if st.session_state.lang=="AR" else "💨 High Wind! Drive carefully")
-            if "tornado" in cond or "squall" in cond: alerts.append("🌪️ تحذير من إعصار أو عاصفة شديدة!" if st.session_state.lang=="AR" else "🌪️ Tornado / Squall Warning!")
-            if vis < 2000: alerts.append("🌫️ شبورة كثيفة! الرؤية ضعيفة" if st.session_state.lang=="AR" else "🌫️ Thick Fog! Low visibility")
-            if hum > 90: alerts.append("💦 رطوبة عالية جداً تخنق" if st.session_state.lang=="AR" else "💦 Very High Humidity")
+            
+            if any(x in cond_main or x in cond_desc for x in ["dust", "sand", "haze", "ash"]):
+                alerts.append("🌪️ Dust or Sandstorm Warning!")
+            if "rain" in cond_main or "drizzle" in cond_main:
+                alerts.append("⚠️ Rain expected! Take an umbrella")
+            if "thunderstorm" in cond_main:
+                alerts.append("⚡ Thunderstorm! Stay safe")
+            if temp > 38:
+                alerts.append("🔥 Extreme Heatwave Warning!")
+            if temp < 7:
+                alerts.append("🥶 Freezing Cold! Wear warm clothes")
+            if wind > 15:
+                alerts.append("💨 High Wind Alert!")
+            if any(x in cond_main for x in ["tornado", "squall"]):
+                alerts.append("🚨🚨 TORNADO / SQUALL WARNING!")
 
+            # عرض التنبيهات في الصفحة + إرسال إشعار للموبايل/الكمبيوتر
             for alert in alerts:
                 st.warning(alert)
+                # كود جافا سكريبت لإظهار إشعار النظام (Push Notification)
+                st.components.v1.html(f"""
+                <script>
+                if (Notification.permission === "granted") {{
+                    new Notification("Weather Alert ⚠️", {{
+                        body: "{alert}",
+                        icon: "https://cdn-icons-png.flaticon.com/512/1146/1146860.png"
+                    }});
+                }}
+                </script>
+                """, height=0)
 
+            # عرض باقي البيانات
             st.markdown(f"<h2>{name}</h2>", unsafe_allow_html=True)
-            
-            # البيانات الحالية
             m1, m2, m3, m4 = st.columns(4)
             m1.metric(T["temp"], f"{temp}°C")
             m2.metric(T["clouds"], f"{curr_data['clouds']['all']}%")
             m3.metric(T["wind"], f"{wind} m/s")
             m4.metric(T["humidity"], f"{hum}%")
             
-            # توقعات الساعات
             st.markdown(f"<h3>{T['hourly']}</h3>", unsafe_allow_html=True)
             f_cols = st.columns(5)
             for i, item in enumerate(fore_data['list'][:5]):
@@ -164,9 +180,7 @@ if query:
                     st.markdown(f'<div class="forecast-box"><small style="color:#ccc">{time}</small><br><b style="color:white">{item["main"]["temp"]}°C</b><br><small style="color:#aaa">{item["weather"][0]["main"]}</small></div>', unsafe_allow_html=True)
 
             if analyze_btn:
-                st.markdown("<br>", unsafe_allow_html=True)
                 st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=10)
-            
             st.markdown(f'<div style="background:#ff9900; padding:12px; border-radius:12px; text-align:center; margin-top:20px;"><a href="https://www.amazon.eg/s?k=weather&tag={AFFILIATE_ID}" target="_blank" style="text-decoration:none; color:black; font-weight:bold;">{T["shop"]}</a></div>', unsafe_allow_html=True)
     else:
         st.error("City not found!")
