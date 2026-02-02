@@ -21,7 +21,7 @@ except:
     st.error("Missing Secrets Configuration!")
     st.stop()
 
-AFFILIATE_ID = "abdallah2026-21"
+AFFILIATE_ID = "abdallah2026-20"
 
 # ضبط اللغة الافتراضية للإنجليزية
 if "lang" not in st.session_state:
@@ -240,3 +240,4 @@ else:
     apply_ui_final("clear", 25)
 
 st.markdown(f"<p style='text-align:center; opacity:0.3; margin-top:50px; color:white;'>Abdallah Nabil | 2026</p>", unsafe_allow_html=True)
+
